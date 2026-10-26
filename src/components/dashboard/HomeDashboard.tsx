@@ -1,6 +1,6 @@
 // src/components/dashboard/HomeDashboard.tsx
-// Personalized Home Dashboard with real persisted metrics, today's mission, and weakness highlights
-import React from 'react';
+// Personalized Home Dashboard with real persisted metrics, dynamic next lesson recommendation, and JLPT readiness tracking
+import React, { useMemo } from 'react';
 import {
   Flame,
   Zap,
@@ -13,27 +13,77 @@ import {
   BookOpen,
   Award,
   ChevronRight,
-  Target
+  Target,
+  CheckCircle2,
+  CalendarDays
 } from 'lucide-react';
 import { useLearning } from '../../context/LearningContext';
 import { useAuth } from '../../context/AuthContext';
 import { MascotKai } from '../common/MascotKai';
 import { storageService } from '../../services/storageService';
+import { fsrsService } from '../../services/fsrsService';
+import { HIRAGANA_LESSONS, KATAKANA_LESSONS } from '../../data/kanaData';
 
 export const HomeDashboard: React.FC = () => {
   const { stats, setActiveSection, displayMode, awardXP } = useLearning();
   const { profile } = useAuth();
   const quests = storageService.getQuests();
   const mistakes = storageService.getMistakes();
+  const completedLessons = storageService.getCompletedLessons();
 
   const unresolvedMistakes = mistakes.filter((m) => !m.resolved);
 
-  const startTodaysMission = () => {
-    if (stats.reviews_due_count > 0) {
-      setActiveSection('reviews');
-    } else {
-      setActiveSection('kana');
+  // Find dynamic next incomplete lesson
+  const nextLesson = useMemo(() => {
+    const nextH = HIRAGANA_LESSONS.find((l) => !completedLessons.includes(l.id));
+    if (nextH) {
+      return {
+        id: nextH.id,
+        title: `Hiragana: ${nextH.title}`,
+        titleTe: nextH.titleTe,
+        system: 'kana' as const
+      };
     }
+    const nextK = KATAKANA_LESSONS.find((l) => !completedLessons.includes(l.id));
+    if (nextK) {
+      return {
+        id: nextK.id,
+        title: `Katakana: ${nextK.title}`,
+        titleTe: nextK.titleTe,
+        system: 'kana' as const
+      };
+    }
+    return {
+      id: 'kana_complete',
+      title: 'Vocabulary: Core N5 Words',
+      titleTe: 'ముఖ్యమైన N5 పదాలు',
+      system: 'vocab' as const
+    };
+  }, [completedLessons]);
+
+  // Today's planner task counts
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const completedPlannerTasksCount = useMemo(() => {
+    try {
+      const saved = localStorage.getItem(`kai_planner_tasks_${todayStr}`);
+      return saved ? JSON.parse(saved).length : 0;
+    } catch (e) {
+      return 0;
+    }
+  }, [todayStr]);
+
+  // Calculate realistic JLPT N5 Readiness Score (0..100%)
+  const jlptReadiness = useMemo(() => {
+    // N5 requires: 46 kana mastered (30% weight), vocab mastery (30% weight), kanji (20% weight), grammar (20% weight)
+    const kanaScore = (stats.kana_mastery_pct / 100) * 30;
+    const vocabScore = Math.min(30, (stats.vocab_mastered_count / 30) * 30);
+    const kanjiScore = Math.min(20, (stats.kanji_mastered_count / 15) * 20);
+    const grammarScore = Math.min(20, (stats.grammar_mastered_count / 10) * 20);
+    return Math.min(100, Math.round(kanaScore + vocabScore + kanjiScore + grammarScore));
+  }, [stats]);
+
+  const startTodaysMission = () => {
+    setActiveSection(nextLesson.system);
   };
 
   return (
@@ -56,7 +106,7 @@ export const HomeDashboard: React.FC = () => {
 
             <p className="text-sm text-stone-200 font-sans leading-relaxed">
               {displayMode === 'telugu' || displayMode === 'bilingual' ? (
-                <span className="font-telugu block text-stone-100">
+                <span className="font-telugu block text-stone-100 mb-1">
                   జపనీస్ నేర్చుకోవడానికి, జపనీస్‌లో ఆలోచించడానికి సిద్ధంగా ఉండండి. నేటి లక్ష్యం ప్రారంభించండి!
                 </span>
               ) : null}
@@ -70,15 +120,36 @@ export const HomeDashboard: React.FC = () => {
                 onClick={startTodaysMission}
                 className="px-5 py-2.5 rounded-xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-semibold text-sm shadow-vermilion flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
               >
-                <span>Start Today's Mission</span>
-                <ArrowRight size={16} />
+                <BookOpen size={16} />
+                <span>Next Lesson: {nextLesson.title}</span>
+                <ArrowRight size={15} />
+              </button>
+
+              {stats.reviews_due_count > 0 && (
+                <button
+                  onClick={() => setActiveSection('reviews')}
+                  className="px-4 py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-600 text-white font-medium text-sm backdrop-blur-sm transition-colors flex items-center gap-1.5"
+                >
+                  <Repeat size={14} />
+                  <span>{stats.reviews_due_count} Reviews Due</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setActiveSection('planner')}
+                className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/20 text-white font-medium text-sm backdrop-blur-sm transition-colors border border-white/20 flex items-center gap-1.5"
+              >
+                <CalendarDays size={14} />
+                <span>Study Planner</span>
               </button>
 
               <button
-                onClick={() => setActiveSection('tutor')}
-                className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/20 text-white font-medium text-sm backdrop-blur-sm transition-colors border border-white/20"
+                onClick={() => setActiveSection('landing')}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#B99A60]/30 to-[#B99A60]/10 hover:bg-[#B99A60]/40 text-[#F0E5CE] font-medium text-sm backdrop-blur-sm transition-all border border-[#B99A60]/40 flex items-center gap-1.5"
+                title="Enter Cinematic Illustrated Japan"
               >
-                Talk to KAI Tutor
+                <Sparkles size={14} className="text-[#B99A60]" />
+                <span>界ワールド • World</span>
               </button>
             </div>
           </div>
@@ -90,7 +161,7 @@ export const HomeDashboard: React.FC = () => {
               speechText={
                 stats.reviews_due_count > 0
                   ? `You have ${stats.reviews_due_count} card(s) ready for review! Let's reinforce them!`
-                  : `Terrific progress! Ready for new Hiragana characters?`
+                  : `Terrific progress! Ready for ${nextLesson.title}?`
               }
               size="lg"
             />
@@ -152,7 +223,7 @@ export const HomeDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Split: Today's Quests & Weakness remediation */}
+      {/* Main Content Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Today's Quests & Skill Progress */}
         <div className="lg:col-span-2 space-y-6">
@@ -224,7 +295,7 @@ export const HomeDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Skill Breakdown Radar / Bars */}
+          {/* Skill Breakdown */}
           <div className="p-5 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi space-y-4">
             <h2 className="text-base font-bold text-kai-ink dark:text-kai-dark-ink font-serif_jp">
               Core Competencies (4技能の習得状況)
@@ -274,8 +345,40 @@ export const HomeDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Col: Personal Weakness Alert & Next Recommendations */}
+        {/* Right Col: JLPT Readiness Meter & Weakness Highlights */}
         <div className="space-y-6">
+          {/* JLPT Readiness Meter */}
+          <div className="p-5 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-kai-ink dark:text-white font-bold text-sm">
+                <Award size={17} className="text-kai-gold" />
+                <span>JLPT N5 Readiness</span>
+              </div>
+              <span className="text-xs font-mono font-bold text-kai-vermilion">
+                {jlptReadiness}% Ready
+              </span>
+            </div>
+
+            <div className="w-full h-2.5 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-kai-gold to-kai-vermilion transition-all duration-500"
+                style={{ width: `${jlptReadiness}%` }}
+              />
+            </div>
+
+            <p className="text-xs text-kai-muted leading-relaxed">
+              Calculated from your mastered kana, vocabulary bank, kanji recognition, and particle grammar.
+            </p>
+
+            <button
+              onClick={() => setActiveSection('jlpt')}
+              className="w-full py-2 px-3 rounded-xl bg-kai-indigo hover:bg-kai-indigo-dark text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+            >
+              <span>Take N5 Diagnostic Exam</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
           {/* Weakness Alert Card */}
           <div className="p-5 rounded-3xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 space-y-3">
             <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold text-sm">

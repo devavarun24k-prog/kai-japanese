@@ -176,6 +176,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenAuth }) =>
             {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
           </button>
 
+          {/* Cinematic Experience Portal */}
+          <button
+            onClick={() => setActiveSection('landing')}
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#101722] to-[#1A2638] text-[#F0E5CE] text-xs font-serif_jp shadow-sm hover:scale-105 active:scale-95 transition-all border border-[#B99A60]/40"
+            title="Experience Cinematic Illustrated Japan (界ワールド)"
+          >
+            <Sparkles size={13} className="text-[#B99A60]" />
+            <span>界ワールド</span>
+          </button>
+
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

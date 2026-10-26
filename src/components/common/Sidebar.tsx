@@ -18,7 +18,8 @@ import {
   BarChart3,
   CalendarDays,
   Award,
-  ChevronRight
+  ChevronRight,
+  Compass
 } from 'lucide-react';
 import { useLearning, ActiveSection } from '../../context/LearningContext';
 
@@ -35,6 +36,7 @@ export const Sidebar: React.FC = () => {
   const { activeSection, setActiveSection, stats } = useLearning();
 
   const navItems: NavItem[] = [
+    { id: 'landing', labelEn: 'Cinematic World', labelJp: '界ワールド', labelTe: 'సినిమాటిక్ ప్రపంచం', icon: Compass, badge: 'Art' },
     { id: 'dashboard', labelEn: 'Dashboard', labelJp: 'ホーム', labelTe: 'డ్యాష్‌బోర్డ్', icon: LayoutDashboard },
     { id: 'kana', labelEn: 'Kana Academy', labelJp: 'かな道場', labelTe: 'కానా అకాడమీ', icon: Sparkles },
     { id: 'vocab', labelEn: 'Vocabulary', labelJp: '単語帳', labelTe: 'పద సంపద', icon: BookOpen },

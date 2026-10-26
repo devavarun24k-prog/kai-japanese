@@ -98,23 +98,177 @@ export const READING_STORIES: ReadingStory[] = [
         japanese: 'そこで友達の田中さんに会いました。「こんにちは！」と挨拶しました。',
         romaji: 'Sokode tomodachi no Tanaka-san ni aimashita. "Konnichiwa!" to aisatsu shimashita.',
         telugu_phonetic: 'సొకొదె తొమొదాచి నొ తనకా-సాన్ ని ఐమాషితా. "కొన్నీచివా!" తొ ఐసత్సు షిమాషితా.',
-        english: 'There, I met my friend Mr. Tanaka. I greeted him saying "Hello!"',
-        telugu: 'అక్కడ నా స్నేహితుడు తనకా గారిని కలిశాను. "నమస్కారం!" అని పలకరించాను.',
+        english: 'There I met my friend Tanaka-san. "Hello!" I greeted him.',
+        telugu: 'అక్కడ నా స్నేహితుడు తనకా-సాన్‌ను కలిశాను. "నమస్కారం!" అని పలకరించాను.',
         vocabulary: [
           { word: '友達', reading: 'ともだち', romaji: 'tomodachi', meaning_en: 'Friend', meaning_te: 'స్నేహితుడు' },
-          { word: '会いました', reading: 'あいました', romaji: 'aimashita', meaning_en: 'Met (past)', meaning_te: 'కలిశాను' },
+          { word: '会いました', reading: 'あいました', romaji: 'aimashita', meaning_en: 'Met (past tense of au)', meaning_te: 'కలిశాను' },
           { word: '挨拶', reading: 'あいさつ', romaji: 'aisatsu', meaning_en: 'Greeting', meaning_te: 'పలకరింపు' }
+        ]
+      },
+      {
+        japanese: '私たちは一緒に喫茶店でお茶を飲みました。とても楽しかったです。',
+        romaji: 'Watashitachi wa issho ni kissaten de ocha o nomimashita. Totemo tanoshikatta desu.',
+        telugu_phonetic: 'వాతాషితాచి వా ఇస్షొ ని కిస్సాతెన్ దె ఒచా ఒ నొమిమాషితా. తొతెమొ తనొషికత్తా దెసు.',
+        english: 'We drank tea together at a cafe. It was very enjoyable.',
+        telugu: 'మేమిద్దరం కలిసి ఒక కేఫ్‌లో టీ త్రాగాము. చాలా సంతోషంగా అనిపించింది.',
+        vocabulary: [
+          { word: '一緒', reading: 'いっしょ', romaji: 'issho', meaning_en: 'Together', meaning_te: 'కలిసి' },
+          { word: '喫茶店', reading: 'きっさてん', romaji: 'kissaten', meaning_en: 'Coffee shop / Cafe', meaning_te: 'కేఫ్' },
+          { word: '楽しかった', reading: 'たのしかった', romaji: 'tanoshikatta', meaning_en: 'Was enjoyable / fun', meaning_te: 'ఆనందంగా గడిచింది' }
         ]
       }
     ],
     questions: [
       {
-        question_en: 'On which day of the week did the narrator visit the bookstore?',
-        question_te: 'ఏ రోజున కథకుడు పుస్తకాల దుకాణానికి వెళ్లాడు?',
-        options: ['Sunday (日曜日)', 'Monday (月曜日)', 'Saturday (土曜日)', 'Friday (金曜日)'],
+        question_en: 'Where did the speaker meet Tanaka-san?',
+        question_te: 'తనకా-సాన్‌ను ఎక్కడ కలిశారు?',
+        options: ['At a train station (駅)', 'At a bookstore in Shibuya (渋谷の本屋)', 'At the library (図書館)', 'At a park (公園)'],
+        correct_index: 1,
+        explanation_en: 'The text states: "渋谷の本屋へ行きました... そこで友達の田中さんに会いました".',
+        explanation_te: 'షిబుయాలోని పుస్తకాల దుకాణంలో కలిసినట్లు స్పష్టంగా ఉంది.'
+      },
+      {
+        question_en: 'Where did they drink tea together?',
+        question_te: 'వాళ్ళు కలిసి ఎక్కడ టీ త్రాగారు?',
+        options: ['At home (家)', 'At school (学校)', 'At a cafe (喫茶店)', 'In the train (電車)'],
         correct_index: 2,
-        explanation_en: '"土曜日に" means "on Saturday".',
-        explanation_te: 'కథ మొదటి వాక్యంలో "土曜日 (శనివారం)" అని ఉంది.'
+        explanation_en: '"喫茶店でお茶を飲みました" means "We drank tea at a cafe".',
+        explanation_te: 'కేఫ్ (喫茶店) లో టీ త్రాగారు.'
+      }
+    ]
+  },
+  {
+    id: 'story_cat_cafe',
+    title_jp: '猫カフェの午後',
+    title_en: 'Afternoon at the Cat Cafe',
+    title_te: 'క్యాట్ కేఫ్‌లో ఒక మధ్యాహ్నం',
+    jlpt_level: 'N5',
+    cover_emoji: '🐱',
+    synopsis_en: 'Spending a peaceful Sunday afternoon watching playful cats in Asakusa.',
+    synopsis_te: 'అసకుసాలోని క్యాట్ కేఫ్‌లో పిల్లులతో ఆడుకుంటూ గడిపిన ఆహ్లాదకరమైన ఆదివారం కథ.',
+    paragraphs: [
+      {
+        japanese: '日曜日の午後に、浅草の猫カフェへ行きました。',
+        romaji: 'Nichiyoubi no gogo ni, Asakusa no neko kafe e ikimashita.',
+        telugu_phonetic: 'నిచియోబి నొ గొగొ ని, అసకుసా నొ నెకొ కాఫె ఎ ఇకిమాషితా.',
+        english: 'On Sunday afternoon, I went to a cat cafe in Asakusa.',
+        telugu: 'ఆదివారం మధ్యాహ్నం నేను అసకుసాలోని క్యాట్ కేఫ్‌కు వెళ్లాను.',
+        vocabulary: [
+          { word: '日曜日', reading: 'にちようび', romaji: 'nichiyoubi', meaning_en: 'Sunday', meaning_te: 'ఆదివారం' },
+          { word: '午後', reading: 'ごご', romaji: 'gogo', meaning_en: 'Afternoon (PM)', meaning_te: 'మధ్యాహ్నం' },
+          { word: '猫', reading: 'ねこ', romaji: 'neko', meaning_en: 'Cat', meaning_te: 'పిల్లి' }
+        ]
+      },
+      {
+        japanese: '部屋の中に白い猫と黒い猫がいます。白い猫はとても静かです。',
+        romaji: 'Heya no naka ni shiroi neko to kuroi neko ga imasu. Shiroi neko wa totemo shizuka desu.',
+        telugu_phonetic: 'హెయా నొ నక ని శిరోయ్ నెకొ తొ కురోయ్ నెకొ గా ఇమాసు. శిరోయ్ నెకొ వా తొతెమొ షిజుకా దెసు.',
+        english: 'Inside the room, there are white cats and black cats. The white cat is very quiet.',
+        telugu: 'గదిలో తెల్లటి పిల్లులు మరియు నల్లటి పిల్లులు ఉన్నాయి. తెల్ల పిల్లి చాలా ప్రశాంతంగా ఉంది.',
+        vocabulary: [
+          { word: '部屋', reading: 'へや', romaji: 'heya', meaning_en: 'Room', meaning_te: 'గది' },
+          { word: '中', reading: 'なか', romaji: 'naka', meaning_en: 'Inside', meaning_te: 'లోపల' },
+          { word: '白い', reading: 'しろい', romaji: 'shiroi', meaning_en: 'White', meaning_te: 'తెలుపు' },
+          { word: '黒い', reading: 'くろい', romaji: 'kuroi', meaning_en: 'Black', meaning_te: 'నలుపు' }
+        ]
+      },
+      {
+        japanese: '私は温かいミルクを飲みました。猫と遊んで、幸せでした。',
+        romaji: 'Watashi wa atatakai miruku o nomimashita. Neko to asonde, shiawase deshita.',
+        telugu_phonetic: 'వాతాషి వా అతాతకాయ్ మిరుకు ఒ నొమిమాషితా. నెకొ తొ అసొందె, షియావాసె దెషితా.',
+        english: 'I drank warm milk. Playing with the cats, I was very happy.',
+        telugu: 'నేను వేడి పాలు త్రాగాను. పిల్లులతో ఆడుకుని ఎంతో సంతోషపడ్డాను.',
+        vocabulary: [
+          { word: 'ミルク', reading: 'みるく', romaji: 'miruku', meaning_en: 'Milk', meaning_te: 'పాలు' },
+          { word: '遊んで', reading: 'あそんで', romaji: 'asonde', meaning_en: 'Playing (te-form of asobu)', meaning_te: 'ఆడుకుని' },
+          { word: '幸せ', reading: 'しあわせ', romaji: 'shiawase', meaning_en: 'Happy', meaning_te: 'సంతోషం' }
+        ]
+      }
+    ],
+    questions: [
+      {
+        question_en: 'What kind of cats were in the room?',
+        question_te: 'గదిలో ఎలాంటి పిల్లులు ఉన్నాయి?',
+        options: ['White and black cats (白い猫と黒い猫)', 'Only brown cats', 'Dogs and cats', 'Big and small cats'],
+        correct_index: 0,
+        explanation_en: 'The text mentions: "白い猫と黒い猫がいます" (there are white cats and black cats).',
+        explanation_te: 'తెలుపు మరియు నలుపు పిల్లులు ఉన్నాయని కథలో ఉంది.'
+      },
+      {
+        question_en: 'What did the person drink at the cat cafe?',
+        question_te: 'ఆ వ్యక్తి క్యాట్ కేఫ్‌లో ఏమి త్రాగాడు?',
+        options: ['Cold water (冷たい水)', 'Warm milk (温かいミルク)', 'Black coffee (ブラックコーヒー)', 'Orange juice (オレンジジュース)'],
+        correct_index: 1,
+        explanation_en: '"温かいミルクを飲みました" translates to "I drank warm milk".',
+        explanation_te: 'వేడి పాలు (温かいミルク) త్రాగారు.'
+      }
+    ]
+  },
+  {
+    id: 'story_conbini_night',
+    title_jp: '夜のコンビニ',
+    title_en: 'Late Night at the Convenience Store',
+    title_te: 'రాత్రి వేళ కన్వీనియన్స్ స్టోర్',
+    jlpt_level: 'N5',
+    cover_emoji: '🏪',
+    synopsis_en: 'Stopping by a bright Tokyo convenience store at night to pick up dinner.',
+    synopsis_te: 'రాత్రిపూట టోక్యోలోని కన్వీనియన్స్ స్టోర్‌కు వెళ్లి ఆహారం కొనుగోలు చేసిన అనుభవం.',
+    paragraphs: [
+      {
+        japanese: '夜の十時に、駅の前のコンビニへ行きました。店の中はとても明るいです。',
+        romaji: 'Yoru no juuji ni, eki no mae no konbini e ikimashita. Mise no naka wa totemo akarui desu.',
+        telugu_phonetic: 'యొరు నొ జూజి ని, ఎకి నొ మాయె నొ కొంబిని ఎ ఇకిమాషితా. మిసె నొ నక వా తొతెమొ అకరుయ్ దెసు.',
+        english: 'At 10:00 at night, I went to the convenience store in front of the station. Inside the shop was very bright.',
+        telugu: 'రాత్రి 10 గంటలకు స్టేషన్ ముందున్న కన్వీనియన్స్ స్టోర్‌కు వెళ్లాను. దుకాణం లోపల వెలుతురుతో చాలా ప్రకాశవంతంగా ఉంది.',
+        vocabulary: [
+          { word: '夜', reading: 'よる', romaji: 'yoru', meaning_en: 'Night', meaning_te: 'రాత్రి' },
+          { word: '前', reading: 'まえ', romaji: 'mae', meaning_en: 'In front of', meaning_te: 'ముందు' },
+          { word: '店', reading: 'みせ', romaji: 'mise', meaning_en: 'Shop / Store', meaning_te: 'దుకాణం' },
+          { word: '明るい', reading: 'あかるい', romaji: 'akarui', meaning_en: 'Bright', meaning_te: 'వెలుతురుగల / ప్రకాశవంతమైన' }
+        ]
+      },
+      {
+        japanese: '鮭のおにぎりと温かいお茶を買いました。「袋はいりません」と言いました。',
+        romaji: 'Shake no onigiri to atatakai ocha o kaimashita. "Fukuro wa irimasen" to iimashita.',
+        telugu_phonetic: 'షకె నొ ఒనిగిరి తొ అతాతకాయ్ ఒచా ఒ కైమాషితా. "ఫుకురొ వా ఇరిమసెన్" తొ ఈమాషితా.',
+        english: 'I bought a salmon onigiri and warm green tea. I said, "I do not need a plastic bag."',
+        telugu: 'నేను సాల్మన్ రైస్ బాల్ (ఒనిగిరి) మరియు వేడి గ్రీన్ టీ కొన్నాను. "నాకు ప్లాస్టిక్ సంచి అవసరం లేదు" అని చెప్పాను.',
+        vocabulary: [
+          { word: '買いました', reading: 'かいまし', romaji: 'kaimashita', meaning_en: 'Bought (past tense of kau)', meaning_te: 'కొన్నాను' },
+          { word: '袋', reading: 'ふくろ', romaji: 'fukuro', meaning_en: 'Bag', meaning_te: 'సంచి' },
+          { word: '言いました', reading: 'いいました', romaji: 'iimashita', meaning_en: 'Said (past tense of iu)', meaning_te: 'చెప్పాను' }
+        ]
+      },
+      {
+        japanese: '店員さんは笑顔で「ありがとうございました」と言いました。家に帰って食べました。',
+        romaji: 'Ten\'in-san wa egao de "Arigatou gozaimashita" to iimashita. Ie ni kaette tabemashita.',
+        telugu_phonetic: 'తెన్ ఇన్-సాన్ వా ఎగావొ దె "అరిగాతౌ గొజాయ్మాషితా" తొ ఈమాషితా. ఇయె ని కాయెత్తె తబెమాషితా.',
+        english: 'The clerk smiled and said, "Thank you very much." I returned home and ate.',
+        telugu: 'షాపు గుమాస్తా చిరునవ్వుతో "ధన్యవాదాలు" అని చెప్పారు. ఇంటికి తిరిగి వచ్చి తిన్నాను.',
+        vocabulary: [
+          { word: '店員', reading: 'てんいん', romaji: 'ten\'in', meaning_en: 'Store clerk', meaning_te: 'షాపు గుమాస్తా' },
+          { word: '笑顔', reading: 'えがお', romaji: 'egao', meaning_en: 'Smiling face', meaning_te: 'చిరునవ్వు' },
+          { word: '帰って', reading: 'かえって', romaji: 'kaette', meaning_en: 'Returning (te-form of kaeru)', meaning_te: 'తిరిగి వెళ్లి' }
+        ]
+      }
+    ],
+    questions: [
+      {
+        question_en: 'What food item did the person purchase at the convenience store?',
+        question_te: 'కన్వీనియన్స్ స్టోర్‌లో ఏ ఆహార పదార్థాన్ని కొన్నారు?',
+        options: ['Salmon Onigiri (鮭のおにぎり)', 'Ramen (ラーメン)', 'Sandwich (サンドイッチ)', 'Apple (りんご)'],
+        correct_index: 0,
+        explanation_en: 'The text states: "鮭のおにぎりと温かいお茶を買いました" (I bought a salmon onigiri and warm tea).',
+        explanation_te: 'సాల్మన్ ఒనిగిరి (鮭のおにぎり) కొన్నట్లు ఉంది.'
+      },
+      {
+        question_en: 'What did the customer say regarding the plastic bag?',
+        question_te: 'ప్లాస్టిక్ సంచి గురించి కస్టమర్ ఏమి చెప్పారు?',
+        options: ['"Please give me two bags"', '"I do not need a bag" (袋はいりません)', '"How much is the bag?"', '"Give me a big bag"'],
+        correct_index: 1,
+        explanation_en: '"袋はいりません" means "I do not need a bag".',
+        explanation_te: '"袋はいりません" అంటే నాకు సంచి అవసరం లేదు అని అర్థం.'
       }
     ]
   }

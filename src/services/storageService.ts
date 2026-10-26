@@ -26,6 +26,8 @@ const BASE_STORAGE_KEYS = {
   QUESTS: 'quests',
   ACHIEVEMENTS: 'achievements',
   CUSTOM_DECKS: 'custom_decks',
+  COMPLETED_LESSONS: 'completed_lessons',
+  FAVORITES: 'favorite_vocab',
 } as const;
 
 // Legacy unscoped storage keys for backwards compatibility and migration
@@ -377,6 +379,28 @@ class StorageService {
     this.syncMistakeToSupabase(recordToSync);
   }
 
+  public recordMistake(params: {
+    item_id: string;
+    item_type: 'kana' | 'vocab' | 'kanji' | 'grammar';
+    prompt: string;
+    mistaken_input: string;
+    correct_answer: string;
+    error_category: string;
+    notes_en: string;
+    notes_te: string;
+  }): void {
+    this.logMistake(
+      params.item_id,
+      params.item_type,
+      params.prompt,
+      params.mistaken_input,
+      params.correct_answer,
+      params.error_category,
+      params.notes_en,
+      params.notes_te
+    );
+  }
+
   public resolveMistake(id: string): void {
     if (!this.currentUserId) return;
     const mistakes = this.getMistakes();
@@ -536,6 +560,65 @@ class StorageService {
     } catch (e) {}
   }
 
+  // Lesson Progress Tracking
+  public getCompletedLessons(): string[] {
+    if (!this.currentUserId) return [];
+    try {
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.COMPLETED_LESSONS));
+      if (data) return JSON.parse(data);
+    } catch (e) {}
+    return [];
+  }
+
+  public markLessonCompleted(lessonId: string): void {
+    if (!this.currentUserId || !lessonId) return;
+    const completed = this.getCompletedLessons();
+    if (!completed.includes(lessonId)) {
+      completed.push(lessonId);
+      try {
+        localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.COMPLETED_LESSONS), JSON.stringify(completed));
+      } catch (e) {}
+    }
+  }
+
+  public isLessonCompleted(lessonId: string): boolean {
+    if (!this.currentUserId || !lessonId) return false;
+    return this.getCompletedLessons().includes(lessonId);
+  }
+
+  // Favorite Vocabulary Tracking
+  public getFavoriteVocab(): string[] {
+    if (!this.currentUserId) return [];
+    try {
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.FAVORITES));
+      if (data) return JSON.parse(data);
+    } catch (e) {}
+    return [];
+  }
+
+  public toggleFavoriteVocab(vocabId: string): boolean {
+    if (!this.currentUserId || !vocabId) return false;
+    const favorites = this.getFavoriteVocab();
+    const idx = favorites.indexOf(vocabId);
+    let isFav = false;
+    if (idx >= 0) {
+      favorites.splice(idx, 1);
+      isFav = false;
+    } else {
+      favorites.push(vocabId);
+      isFav = true;
+    }
+    try {
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.FAVORITES), JSON.stringify(favorites));
+    } catch (e) {}
+    return isFav;
+  }
+
+  public isFavoriteVocab(vocabId: string): boolean {
+    if (!this.currentUserId || !vocabId) return false;
+    return this.getFavoriteVocab().includes(vocabId);
+  }
+
   // Full JSON Export / Import for current user
   public exportFullBackup(): string {
     const backup = {
@@ -549,6 +632,8 @@ class StorageService {
       mistakes: this.getMistakes(),
       quests: this.getQuests(),
       achievements: this.getAchievements(),
+      completed_lessons: this.getCompletedLessons(),
+      favorites: this.getFavoriteVocab(),
     };
     return JSON.stringify(backup, null, 2);
   }
@@ -564,6 +649,8 @@ class StorageService {
       if (data.mistakes) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.MISTAKES), JSON.stringify(data.mistakes));
       if (data.quests) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.QUESTS), JSON.stringify(data.quests));
       if (data.achievements) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ACHIEVEMENTS), JSON.stringify(data.achievements));
+      if (data.completed_lessons) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.COMPLETED_LESSONS), JSON.stringify(data.completed_lessons));
+      if (data.favorites) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.FAVORITES), JSON.stringify(data.favorites));
       return true;
     } catch (e) {
       return false;
@@ -584,7 +671,7 @@ class StorageService {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await supabase.from('profiles').upsert({
+      const { error } = await supabase.from('profiles').upsert({
         id: session.user.id,
         email: profile.email,
         display_name: profile.display_name,
@@ -595,7 +682,10 @@ class StorageService {
         furigana_enabled: profile.furigana_enabled,
         updated_at: new Date().toISOString()
       });
-    } catch (e) {}
+      if (error) console.warn('Supabase profile sync notice:', error.message);
+    } catch (e) {
+      console.warn('Supabase profile sync error:', e);
+    }
   }
 
   private async syncCardToSupabase(card: FSRSCard): Promise<void> {
@@ -603,7 +693,7 @@ class StorageService {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await supabase.from('fsrs_cards').upsert({
+      const { error } = await supabase.from('fsrs_cards').upsert({
         card_id: card.card_id,
         user_id: session.user.id,
         item_id: card.item_id,
@@ -619,7 +709,10 @@ class StorageService {
         last_review: card.last_review,
         updated_at: new Date().toISOString()
       });
-    } catch (e) {}
+      if (error) console.warn('Supabase card sync notice:', error.message);
+    } catch (e) {
+      console.warn('Supabase card sync error:', e);
+    }
   }
 
   private async syncAttemptToSupabase(attempt: LearningAttempt): Promise<void> {
@@ -627,7 +720,7 @@ class StorageService {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await supabase.from('learning_attempts').insert({
+      const { error } = await supabase.from('learning_attempts').insert({
         id: attempt.id,
         user_id: session.user.id,
         item_id: attempt.item_id,
@@ -642,7 +735,10 @@ class StorageService {
         hint_used: attempt.hint_used,
         timestamp: attempt.timestamp
       });
-    } catch (e) {}
+      if (error) console.warn('Supabase attempt sync notice:', error.message);
+    } catch (e) {
+      console.warn('Supabase attempt sync error:', e);
+    }
   }
 
   private async syncMistakeToSupabase(mistake: MistakeRecord): Promise<void> {
@@ -650,7 +746,7 @@ class StorageService {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await supabase.from('mistake_records').upsert({
+      const { error } = await supabase.from('mistake_records').upsert({
         id: mistake.id,
         user_id: session.user.id,
         item_id: mistake.item_id,
@@ -666,7 +762,10 @@ class StorageService {
         last_occurred: mistake.last_occurred,
         resolved: mistake.resolved
       });
-    } catch (e) {}
+      if (error) console.warn('Supabase mistake sync notice:', error.message);
+    } catch (e) {
+      console.warn('Supabase mistake sync error:', e);
+    }
   }
 
   // Supabase Pull / Restore into user-scoped namespace
@@ -683,7 +782,7 @@ class StorageService {
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (profileData) {
         const localProfile = this.getProfile();
@@ -696,6 +795,14 @@ class StorageService {
           display_mode: profileData.display_mode,
           romaji_enabled: profileData.romaji_enabled,
           furigana_enabled: profileData.furigana_enabled
+        });
+      } else {
+        // Auto-initialize profile in Supabase if missing
+        const currentProfile = this.getProfile();
+        await this.syncProfileToSupabase({
+          ...currentProfile,
+          id: session.user.id,
+          email: session.user.email || currentProfile.email
         });
       }
 

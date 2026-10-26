@@ -16,7 +16,7 @@ export class FSRSService {
   // Create a brand new unreviewed card
   public createCard(
     itemId: string,
-    itemType: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake'
+    itemType: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake' | 'sentence'
   ): FSRSCard {
     return {
       card_id: `card_${itemType}_${itemId}_${Date.now()}`,

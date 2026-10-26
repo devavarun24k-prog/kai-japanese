@@ -2,6 +2,7 @@
 // AI Tutor service with secure Supabase Edge Function proxy and built-in pedagogical fallback
 import { AIMessage, JLPTLevel, DisplayMode } from '../types';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { storageService } from './storageService';
 
 export interface AITutorConfig {
   provider: 'gemini' | 'builtin';
@@ -18,12 +19,73 @@ export interface AITutorResponse {
   providerUsed: string;
 }
 
+// Interactive Tutor Quiz bank for 1-on-1 pedagogical sessions
+interface QuizQuestion {
+  id: string;
+  question: string;
+  teluguQuestion: string;
+  options: string[];
+  correctIndex: number;
+  explanationEn: string;
+  explanationTe: string;
+}
+
+const TUTOR_QUIZ_BANK: QuizQuestion[] = [
+  {
+    id: 'tq_1',
+    question: 'Which particle correctly fills the blank: 図書館 ＿＿ 勉強します (I study at the library)?',
+    teluguQuestion: 'లైబ్రరీలో చదువుతున్నాను అనే వాక్యంలో ఖాళీని ఏ విభక్తితో నింపాలి?',
+    options: ['で (de)', 'に (ni)', 'へ (e)', 'を (o)'],
+    correctIndex: 0,
+    explanationEn: 'で (de) marks the physical location where an active action (study) takes place.',
+    explanationTe: 'చదువుకోవడం అనే పని జరుగుతున్న ప్రదేశాన్ని చెప్పడానికి "で" (de) వాడాలి.'
+  },
+  {
+    id: 'tq_2',
+    question: 'What is the negative form of the i-adjective 高い (takai - expensive)?',
+    teluguQuestion: '高い (ఖరీదైన) అనే ఇ-విశేషణానికి వ్యతిరేక పదం ఏమిటి?',
+    options: ['高くない (takakunai)', '高いじゃない (takai janai)', '高くないでした (takakunai deshita)', '高かった (takakatta)'],
+    correctIndex: 0,
+    explanationEn: 'For i-adjectives, drop the final い and add くない (takakunai = not expensive).',
+    explanationTe: 'ఇ-విశేషణాల నెగెటివ్ చేయడానికి చివరి "い" తీసి "くない" చేర్చాలి (高くない).'
+  },
+  {
+    id: 'tq_3',
+    question: 'What is the te-form of 飲みます (nomimasu - to drink / dictionary: 飲む)?',
+    teluguQuestion: 'త్రాగడం (飲む) యొక్క తే-ఫారం (Te-form) ఏమిటి?',
+    options: ['飲んで (nonde)', '飲みて (nomite)', '飲って (notte)', '飲んだ (nonda)'],
+    correctIndex: 0,
+    explanationEn: 'Verbs ending in む (mu) change to んで (nde) in the te-form (のむ → のんで).',
+    explanationTe: 'む తో ముగిసే క్రియలు తే-ఫారంలో "んで" గా మారుతాయి: 飲む → 飲んで.'
+  },
+  {
+    id: 'tq_4',
+    question: 'How do you say "There is a cat" (living animal) in Japanese?',
+    teluguQuestion: 'పిల్లి ఉంది (జీవం ఉన్న జంతువు) అని చెప్పడానికి ఏది వాడాలి?',
+    options: ['猫がいます (Neko ga imasu)', '猫があります (Neko ga arimasu)', '猫をいます (Neko o imasu)', '猫に行きます (Neko ni ikimasu)'],
+    correctIndex: 0,
+    explanationEn: 'Use います (imasu) for living animate beings (cats, people) with subject marker が.',
+    explanationTe: 'జంతువులు లేదా మనుషులు వంటి ప్రాణం ఉన్న వాటికి "います" వాడాలి.'
+  },
+  {
+    id: 'tq_5',
+    question: 'Which particle indicates destination of movement: 東京 ＿＿ 行きます (I go to Tokyo)?',
+    teluguQuestion: 'టోక్యోకు వెళ్తాను అనే వాక్యంలో గమ్యస్థానాన్ని సూచించే కారకం ఏది?',
+    options: ['へ (e) or に (ni)', 'で (de)', 'を (o)', 'と (to)'],
+    correctIndex: 0,
+    explanationEn: 'へ (pronounced "e") or に marks destination of directional movement verbs like 行きます.',
+    explanationTe: 'గమ్యస్థానాన్ని చెప్పడానికి "へ" (e) లేదా "に" (ni) వాడాలి.'
+  }
+];
+
 class AIService {
   private config: AITutorConfig = {
     provider: 'builtin',
     level: 'Beginner',
     displayMode: 'bilingual'
   };
+
+  private activeQuizIndex: number = -1;
 
   constructor() {
     this.loadConfig();
@@ -46,7 +108,6 @@ class AIService {
   public saveConfig(config: Partial<AITutorConfig>) {
     this.config = { ...this.config, ...config };
     try {
-      // Store provider and level preferences only — NEVER store raw API keys in client storage
       localStorage.setItem('kai_ai_config', JSON.stringify({
         provider: this.config.provider,
         level: this.config.level,
@@ -117,6 +178,102 @@ class AIService {
 
   // Built-in pedagogical intelligence engine (Deterministic, accurate, trilingual)
   private generatePedagogicalResponse(query: string, rawInput: string, level: string): AITutorResponse {
+    const isTopicQuery =
+      query.includes('explain') ||
+      query.includes('what is') ||
+      query.includes('how ') ||
+      query.includes('te-form') ||
+      query.includes('te form') ||
+      query.includes('wa vs ga') ||
+      query.includes('wa and ga') ||
+      query.includes('ni vs de') ||
+      query.includes('adjective') ||
+      query.includes('hiragana');
+
+    // Check if an ongoing quiz is awaiting learner's attempt
+    if (this.activeQuizIndex >= 0 && !isTopicQuery) {
+      const q = TUTOR_QUIZ_BANK[this.activeQuizIndex];
+      const correctText = q.options[q.correctIndex].toLowerCase();
+      const isCorrect = query.includes(correctText) || 
+        query.includes(`${q.correctIndex + 1}`) ||
+        (q.correctIndex === 0 && (query.startsWith('1') || query.includes('first') || query.includes('a)'))) ||
+        (q.correctIndex === 1 && (query.startsWith('2') || query.includes('second') || query.includes('b)')));
+
+      const evaluatedIndex = this.activeQuizIndex;
+      this.activeQuizIndex = -1; // Reset until user asks for another question
+
+      if (isCorrect) {
+        return {
+          reply: `🎉 **Correct! Excellent work.**\n\n• **Question:** ${q.question}\n• **Correct Answer:** ${q.options[q.correctIndex]}\n• **Explanation:** ${q.explanationEn}\n\nWould you like another practice question, or should we review your mistakes?`,
+          teluguTranslation: `🎉 **చాలా చక్కగా చెప్పారు! మీ సమాధానం సరైనది.**\n${q.explanationTe}\n\nతదుపరి ప్రశ్న అడగమంటారా లేదా మీ పొరపాట్లను సమీక్షించాలా?`,
+          suggestedReplies: [
+            'Next quiz question',
+            'Review my past mistakes',
+            'Explain Te-form rules'
+          ],
+          isRealAI: false,
+          providerUsed: 'KAI Built-in Interactive Quiz Engine'
+        };
+      } else {
+        return {
+          reply: `Not quite, but this is a very common learning step!\n\n• **Correct Answer:** ${q.options[q.correctIndex]}\n• **Why:** ${q.explanationEn}\n\nDon't worry — making mistakes is the best way to anchor your memory! Ready for the next question?`,
+          teluguTranslation: `పర్వాలేదు, పొరపాటు సరిదిద్దుకుందాం!\n• **సరైన సమాధానం:** ${q.options[q.correctIndex]}\n• **వివరణ:** ${q.explanationTe}`,
+          suggestedReplies: [
+            'Try another quiz question',
+            'Review my past mistakes',
+            'Explain why de is used'
+          ],
+          isRealAI: false,
+          providerUsed: 'KAI Built-in Interactive Quiz Engine'
+        };
+      }
+    }
+
+    // Trigger: Review past mistakes
+    if (query.includes('mistake') || query.includes('error') || query.includes('review my mistake') || query.includes('wrong answer')) {
+      const mistakes = storageService.getMistakes();
+      if (mistakes.length === 0) {
+        return {
+          reply: `🌟 **Clean slate!** You currently have 0 recorded mistakes in your study log.\n\nGreat job maintaining high accuracy! Let's challenge you with an N5 practice question to keep your skills sharp.\n\n**Here is your question:**\n${TUTOR_QUIZ_BANK[0].question}\n\nOptions:\n1. ${TUTOR_QUIZ_BANK[0].options[0]}\n2. ${TUTOR_QUIZ_BANK[0].options[1]}\n3. ${TUTOR_QUIZ_BANK[0].options[2]}\n4. ${TUTOR_QUIZ_BANK[0].options[3]}`,
+          teluguTranslation: `🌟 అద్భుతం! మీ స్టడీ లాగ్‌లో ప్రస్తుతం ఎలాంటి పొరపాట్లు లేవు. మంచి సాధన చేస్తున్నారు!\nప్రాక్టీస్ కోసం ఒక ప్రశ్న ఇచ్చాను, సరైన సమాధానం చెప్పండి.`,
+          suggestedReplies: [
+            TUTOR_QUIZ_BANK[0].options[0],
+            TUTOR_QUIZ_BANK[0].options[1],
+            TUTOR_QUIZ_BANK[0].options[2]
+          ],
+          isRealAI: false,
+          providerUsed: 'KAI Built-in Mistake Analysis Engine'
+        };
+      } else {
+        const lastMistake = mistakes[mistakes.length - 1];
+        return {
+          reply: `🔍 **Constructive Mistake Review:**\n\nI reviewed your recent study records. In a recent exercise, you faced this challenge:\n• **Prompt:** "${lastMistake.prompt}"\n• **Your Input:** "${lastMistake.mistaken_input}"\n• **Correct Form:** "${lastMistake.correct_answer}"\n• **Guidance:** ${lastMistake.notes_en || 'Remember to check particle function and verb tense.'}\n\nWould you like to try a focused practice question on this concept?`,
+          teluguTranslation: `🔍 **పొరపాట్ల సమీక్ష:**\nమీరు గతంలో చేసిన పొరపాటును పరిశీలించాను:\n• ప్రశ్న: "${lastMistake.prompt}"\n• మీరు ఇచ్చిన సమాధానం: "${lastMistake.mistaken_input}"\n• సరైన సమాధానం: "${lastMistake.correct_answer}"\n• వివరణ: ${lastMistake.notes_te || 'వ్యాకరణ సూత్రాన్ని గమనించండి.'}`,
+          suggestedReplies: [
+            'Give me a quiz question to fix this',
+            'Explain the grammar behind this',
+            'Show another example'
+          ],
+          isRealAI: false,
+          providerUsed: 'KAI Built-in Mistake Analysis Engine'
+        };
+      }
+    }
+
+    // Trigger: Interactive Quiz mode (Ask ONE question at a time)
+    if (query.includes('quiz') || query.includes('test me') || query.includes('practice question') || query.includes('ask me a question')) {
+      this.activeQuizIndex = Math.floor(Math.random() * TUTOR_QUIZ_BANK.length);
+      const q = TUTOR_QUIZ_BANK[this.activeQuizIndex];
+
+      return {
+        reply: `🎯 **1-on-1 Practice Challenge!**\n\nI will ask you ONE question at a time and wait for your answer before explaining.\n\n**Question:**\n${q.question}\n\n**Choices:**\n1. ${q.options[0]}\n2. ${q.options[1]}\n3. ${q.options[2]}\n4. ${q.options[3]}\n\nReply with your chosen option or number!`,
+        teluguTranslation: `🎯 **వ్యక్తిగత సాధనా ప్రశ్న:**\n${q.teluguQuestion}\n\nసరైన సమాధానాన్ని లేదా నంబర్‌ను టైప్ చేసి పంపండి!`,
+        suggestedReplies: [q.options[0], q.options[1], q.options[2], q.options[3]],
+        isRealAI: false,
+        providerUsed: 'KAI Built-in Interactive Quiz Engine'
+      };
+    }
+
     // 1. Topic: Particles (は vs が, に vs で, を, と, も)
     if (query.includes('wa vs ga') || query.includes('wa and ga') || query.includes('は vs が') || query.includes('difference between wa and ga')) {
       return {
@@ -131,7 +288,7 @@ class AIService {
         suggestedReplies: [
           'Can you show me an example with に and で?',
           'How do I say "I like sushi" with が?',
-          'Test my knowledge on particles'
+          'Start a 1-on-1 quiz on particles'
         ],
         isRealAI: false,
         providerUsed: 'KAI Built-in Pedagogical Grammar Engine'
@@ -149,14 +306,14 @@ class AIService {
           { token: 'べんきょう', furigana: 'べんきょう', pos: 'Noun', meaning: 'Study / చదువు' },
           { token: 'します', furigana: 'します', pos: 'Verb', meaning: 'do / చేస్తాను' }
         ],
-        suggestedReplies: ['What about destination particle へ (e)?', 'Give me a quiz on に and で', 'Explain を (o) particle'],
+        suggestedReplies: ['What about destination particle へ (e)?', 'Start a 1-on-1 quiz', 'Explain を (o) particle'],
         isRealAI: false,
         providerUsed: 'KAI Built-in Pedagogical Grammar Engine'
       };
     }
 
     // 3. Topic: Hiragana basics & Pronunciation (Telugu connection)
-    if (query.includes('hiragana') || query.includes('telugu') || query.includes('pronounce') || query.includes('alphabet')) {
+    if (query.includes('hiragana') || query.includes('telugu') || query.includes('pronounce') || query.includes('phonetic') || query.includes('alphabet')) {
       return {
         reply: `**Japanese Hiragana & Telugu Phonetics:**\n\nTelugu and Japanese share remarkably similar vowel sounds! Both have pure, crisp vowels:\n\n• **あ (a)** = Telugu **అ** (as in అన్న)\n• **い (i)** = Telugu **ఇ** (as in ఇల్లు)\n• **う (u)** = Telugu **ఉ** (with unrounded lips, softer than ఊ)\n• **え (e)** = Telugu **ఎ** (as in ఎలుక)\n• **お (o)** = Telugu **ఒ** (as in ఒంటె)\n\nJapanese sentence order (SOV: Subject-Object-Verb) is also identical to Telugu grammar order!\n*Telugu:* నేను (S) అన్నం (O) తింటున్నాను (V).\n*Japanese:* わたしは (S) ごはんを (O) たべます (V).`,
         teluguTranslation: `**జపనీస్ మరియు తెలుగు భాషల మధ్య ఉన్న అద్భుతమైన పోలిక:**\nతెలుగు మరియు జపనీస్ భాషల అచ్చులు (Vowels) దాదాపు ఒకేలా ఉంటాయి (అ, ఇ, ఉ, ఎ, ఒ).\nఅంతేకాకుండా వాక్య నిర్మాణం (SOV - Subject, Object, Verb) కూడా తెలుగు మరియు జపనీస్‌లో సరిగ్గా ఒకేలా ఉంటుంది!\n• తెలుగు: నేను అన్నం తింటున్నాను.\n• జపనీస్: わたしは ごはんを たべます (వా తా షి వా / గో హన్ వొ / తా బె మా సు).`,
@@ -177,7 +334,18 @@ class AIService {
       };
     }
 
-    // 5. Topic: Roleplay / Practice Conversation
+    // 5. Topic: Adjectives (い-adj vs な-adj)
+    if (query.includes('adjective') || query.includes('i-adj') || query.includes('na-adj') || query.includes('oishii') || query.includes('shizuka')) {
+      return {
+        reply: `**Japanese Adjectives: i-Adjectives vs na-Adjectives:**\n\n• **i-Adjectives (い形容詞):** End in ~い. They conjugate themselves like mini-verbs!\n  - Present: おいしい です (It is delicious)\n  - Negative: おいしくない です (It is not delicious - drop い, add くない)\n  - Past: おいしかった です (It was delicious - drop い, add かった)\n  - Past Negative: おいしくなかった です (It was not delicious)\n\n• **na-Adjectives (な形容詞):** Act like nouns and need です or な!\n  - Present: 静か です (It is quiet)\n  - Negative: 静か じゃない です (It is not quiet)\n  - Before noun: 静か**な**町 (A quiet town)`,
+        teluguTranslation: `**జపనీస్ విశేషణాలు (Adjectives):**\n• **ఇ-విశేషణాలు:** "い" తో ముగుస్తాయి. వీటిని మార్చడం సులభం: おいしい (రుచి) → おいしくない (రుచి లేదు).\n• **నా-విశేషణాలు:** నామవాచకం ముందు వచ్చినప్పుడు "な" చేర్చాలి: 静かな 町 (ప్రశాంతమైన ఊరు). నెగెటివ్ చెప్పడానికి "じゃない" వాడాలి.`,
+        suggestedReplies: ['How do I conjugate 高い (takai)?', 'Quiz me on adjectives', 'What is kirei na?'],
+        isRealAI: false,
+        providerUsed: 'KAI Built-in Pedagogical Grammar Engine'
+      };
+    }
+
+    // 6. Topic: Roleplay / Practice Conversation
     if (query.includes('roleplay') || query.includes('conversation') || query.includes('order') || query.includes('conbini') || query.includes('restaurant')) {
       return {
         reply: `**Convenience Store (コンビニ) Roleplay!**\n\nClerk (店員): 「いらっしゃいませ！お弁当あたためますか？」\n*(Irasshaimase! Obentou atatamemasu ka?)*\n"Welcome! Would you like your bento heated up?"\n\n**Your Turn to Respond!** Choose your answer:\n1. 「はい、おねがいします。」 (*Hai, onegaishimasu.* — Yes, please.)\n2. 「いいえ、だいじょうぶです。」 (*Iie, daijoubu desu.* — No, that's fine.)`,
@@ -194,13 +362,13 @@ class AIService {
 
     // Default contextual guidance
     return {
-      reply: `Kon'nichiwa! I am KAI, your personal Japanese mastery mentor. You asked: "${rawInput}".\n\nFor beginner Japanese learners, every question is an opportunity to strengthen fundamentals. Whether you want to master **Hiragana stroke orders**, understand **particle usage (は, が, に, で)**, explore **verb forms**, or practice **natural conversational Japanese**, I am here with trilingual explanations in English and Telugu.\n\nWhat would you like to explore next?`,
-      teluguTranslation: `నమస్కారం! నేను మీ జపనీస్ గురువు KAI. మీరు అడిగిన ప్రశ్నకు సమాధానం ఇవ్వడానికి నేను సిద్ధంగా ఉన్నాను. హిరగాన అక్షరాలు, వ్యాకరణం లేదా ఉచ్చారణ సాధనలో మీకు సహాయపడగలను.`,
+      reply: `Kon'nichiwa! I am KAI, your personal Japanese mastery mentor. You asked: "${rawInput}".\n\nFor beginner Japanese learners, every question is an opportunity to strengthen fundamentals. Whether you want to master **Hiragana stroke orders**, understand **particle usage (は, が, に, で)**, explore **verb forms**, practice with **1-on-1 interactive quizzes**, or **review your recent mistakes**, I am here with trilingual explanations in English and Telugu.\n\nWhat would you like to explore next?`,
+      teluguTranslation: `నమస్కారం! నేను మీ జపనీస్ గురువు KAI. మీరు అడిగిన ప్రశ్నకు సమాధానం ఇవ్వడానికి నేను సిద్ధంగా ఉన్నాను. హిరగాన అక్షరాలు, వ్యాకరణం, లేదా వ్యక్తిగత క్విజ్ సాధనలో మీకు సహాయపడగలను.`,
       suggestedReplies: [
-        'How do I say "Nice to meet you" in Japanese?',
-        'Explain particle は (wa) simply',
-        'Show me common Japanese greetings with Telugu pronunciation',
-        'Give me a quick beginner quiz'
+        'Start a 1-on-1 interactive quiz',
+        'Review my past mistakes',
+        'Explain the difference between は (wa) and が (ga)',
+        'How does Te-form verb conjugation work?'
       ],
       isRealAI: false,
       providerUsed: 'KAI Built-in Pedagogical Mentor Engine'

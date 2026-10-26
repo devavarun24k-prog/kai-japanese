@@ -9,23 +9,34 @@ import { AuthModal } from './components/auth/AuthModal';
 import { AuthGateway } from './components/auth/AuthGateway';
 import { SettingsModal } from './components/settings/SettingsModal';
 
-// Modules
+// Core and Fast Modules
 import { HomeDashboard } from './components/dashboard/HomeDashboard';
 import { KanaAcademy } from './components/kana/KanaAcademy';
 import { VocabAcademy } from './components/vocab/VocabAcademy';
-import { KanjiDojo } from './components/kanji/KanjiDojo';
 import { GrammarLab } from './components/grammar/GrammarLab';
 import { SentenceForge } from './components/sentence/SentenceForge';
 import { AITutorChat } from './components/tutor/AITutorChat';
-import { SpeakingStudio } from './components/speaking/SpeakingStudio';
-import { HandwritingStudio } from './components/handwriting/HandwritingStudio';
-import { ListeningLab } from './components/listening/ListeningLab';
-import { ReadingTheatre } from './components/reading/ReadingTheatre';
-import { RPGGameHub } from './components/games/RPGGameHub';
 import { SpacedRepetitionDeck } from './components/reviews/SpacedRepetitionDeck';
 import { WeaknessAnalytics } from './components/analytics/WeaknessAnalytics';
 import { StudyPlanner } from './components/planner/StudyPlanner';
-import { JLPTArena } from './components/jlpt/JLPTArena';
+import { CinematicLandingPage } from './components/landing/CinematicLandingPage';
+
+// Code-split Heavy Modules via React.lazy
+const KanjiDojo = React.lazy(() => import('./components/kanji/KanjiDojo').then((m) => ({ default: m.KanjiDojo })));
+const SpeakingStudio = React.lazy(() => import('./components/speaking/SpeakingStudio').then((m) => ({ default: m.SpeakingStudio })));
+const HandwritingStudio = React.lazy(() => import('./components/handwriting/HandwritingStudio').then((m) => ({ default: m.HandwritingStudio })));
+const ListeningLab = React.lazy(() => import('./components/listening/ListeningLab').then((m) => ({ default: m.ListeningLab })));
+const ReadingTheatre = React.lazy(() => import('./components/reading/ReadingTheatre').then((m) => ({ default: m.ReadingTheatre })));
+const RPGGameHub = React.lazy(() => import('./components/games/RPGGameHub').then((m) => ({ default: m.RPGGameHub })));
+const JLPTArena = React.lazy(() => import('./components/jlpt/JLPTArena').then((m) => ({ default: m.JLPTArena })));
+
+const ModuleLoadingSkeleton: React.FC = () => (
+  <div className="p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border animate-pulse space-y-4 max-w-2xl mx-auto shadow-washi">
+    <div className="h-6 w-48 bg-stone-200 dark:bg-stone-800 rounded-xl" />
+    <div className="h-4 w-72 bg-stone-100 dark:bg-stone-800/60 rounded-lg" />
+    <div className="h-48 w-full bg-stone-50 dark:bg-stone-800/40 rounded-2xl" />
+  </div>
+);
 
 import { Settings, Lock } from 'lucide-react';
 
@@ -34,10 +45,19 @@ const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [showAuthGateway, setShowAuthGateway] = useState<boolean>(false);
 
   // Render active module
   const renderModule = () => {
     switch (activeSection) {
+      case 'landing':
+        return (
+          <CinematicLandingPage
+            onEnterApp={(target) => setActiveSection(target || 'dashboard')}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
+            isAuthenticated={isAuthenticated}
+          />
+        );
       case 'dashboard':
         return <HomeDashboard />;
       case 'kana':
@@ -89,7 +109,32 @@ const AppContent: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return <AuthGateway />;
+    if (showAuthGateway) {
+      return <AuthGateway onBackToLanding={() => setShowAuthGateway(false)} />;
+    }
+    return (
+      <CinematicLandingPage
+        onEnterApp={(target) => {
+          if (target && target !== 'dashboard') {
+            setActiveSection(target);
+          }
+          setShowAuthGateway(true);
+        }}
+        onOpenAuth={() => setShowAuthGateway(true)}
+        isAuthenticated={false}
+      />
+    );
+  }
+
+  // Full-screen Cinematic Experience for authenticated users when requested
+  if (activeSection === 'landing') {
+    return (
+      <CinematicLandingPage
+        onEnterApp={(target) => setActiveSection(target || 'dashboard')}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        isAuthenticated={true}
+      />
+    );
   }
 
   return (
@@ -108,7 +153,9 @@ const AppContent: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-full">
-          {renderModule()}
+          <React.Suspense fallback={<ModuleLoadingSkeleton />}>
+            {renderModule()}
+          </React.Suspense>
         </main>
       </div>
 

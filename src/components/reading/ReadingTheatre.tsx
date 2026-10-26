@@ -1,5 +1,5 @@
 // src/components/reading/ReadingTheatre.tsx
-// Graded Reader Stories with sentence audio, clickable vocabulary lexicon, and Telugu translations
+// Graded Reader Stories with furigana toggle, study bookmarks, sentence audio, clickable vocabulary lexicon, and Telugu translations
 import React, { useState } from 'react';
 import {
   Scroll,
@@ -9,20 +9,31 @@ import {
   XCircle,
   Sparkles,
   ArrowRight,
-  Info
+  Info,
+  Star,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { READING_STORIES } from '../../data/readingStories';
 import { ReadingStory, ReadingLexicon } from '../../types';
 import { AudioButton } from '../common/AudioButton';
 import { useLearning } from '../../context/LearningContext';
 import { soundEffects } from '../../services/soundEffects';
+import { storageService } from '../../services/storageService';
 
 export const ReadingTheatre: React.FC = () => {
-  const { displayMode, furiganaEnabled, romajiEnabled, awardXP, recordAttempt } = useLearning();
+  const { displayMode, furiganaEnabled, setFuriganaEnabled, romajiEnabled, setRomajiEnabled, awardXP, recordAttempt } = useLearning();
   const [selectedStory, setSelectedStory] = useState<ReadingStory>(READING_STORIES[0]);
   const [activeLexicon, setActiveLexicon] = useState<ReadingLexicon | null>(null);
+  const [favorites, setFavorites] = useState<string[]>(() => storageService.getFavoriteVocab());
+  const [showTranslations, setShowTranslations] = useState<boolean>(true);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState<boolean>(false);
+
+  const toggleFavorite = (wordId: string) => {
+    storageService.toggleFavoriteVocab(wordId);
+    setFavorites(storageService.getFavoriteVocab());
+  };
 
   const handleSelectWord = (word: ReadingLexicon) => {
     setActiveLexicon(word);
@@ -73,12 +84,12 @@ export const ReadingTheatre: React.FC = () => {
             <span className="text-sm font-sans font-normal text-kai-muted">Reading Theatre</span>
           </h1>
           <p className="text-xs text-kai-muted">
-            Original N5 graded reader stories with clickable vocabulary, audio, and Telugu guides.
+            4 Original N5 graded reader stories with furigana toggle, clickable vocabulary bookmarks, and audio.
           </p>
         </div>
 
-        {/* Story Selector */}
-        <div className="flex items-center gap-2">
+        {/* Story Selector & Toggles */}
+        <div className="flex flex-wrap items-center gap-2">
           {READING_STORIES.map((s) => (
             <button
               key={s.id}
@@ -99,6 +110,40 @@ export const ReadingTheatre: React.FC = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Reading Controls Toolbar */}
+      <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-kai-dark-card border border-kai-border text-xs flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFuriganaEnabled(!furiganaEnabled)}
+            className={`px-3 py-1 rounded-xl font-medium border text-2xs transition-colors ${
+              furiganaEnabled
+                ? 'bg-kai-indigo text-white border-kai-indigo'
+                : 'bg-white dark:bg-kai-dark-bg text-kai-muted border-kai-border'
+            }`}
+          >
+            Furigana: {furiganaEnabled ? 'ON' : 'OFF'}
+          </button>
+          <button
+            onClick={() => setRomajiEnabled(!romajiEnabled)}
+            className={`px-3 py-1 rounded-xl font-medium border text-2xs transition-colors ${
+              romajiEnabled
+                ? 'bg-kai-indigo text-white border-kai-indigo'
+                : 'bg-white dark:bg-kai-dark-bg text-kai-muted border-kai-border'
+            }`}
+          >
+            Romaji: {romajiEnabled ? 'ON' : 'OFF'}
+          </button>
+        </div>
+
+        <button
+          onClick={() => setShowTranslations(!showTranslations)}
+          className="text-2xs text-kai-muted hover:text-kai-ink font-medium flex items-center gap-1.5 transition-colors"
+        >
+          {showTranslations ? <EyeOff size={13} /> : <Eye size={13} />}
+          <span>{showTranslations ? 'Hide Translations (Immersion)' : 'Show English & Telugu'}</span>
+        </button>
       </div>
 
       {/* Story Stage */}
@@ -144,7 +189,7 @@ export const ReadingTheatre: React.FC = () => {
                     </p>
                   )}
 
-                  {(displayMode === 'telugu' || displayMode === 'bilingual') && (
+                  {showTranslations && (displayMode === 'telugu' || displayMode === 'bilingual') && (
                     <p className="font-telugu text-2xs text-kai-vermilion-dark dark:text-kai-vermilion-light">
                       ఉచ్చారణ: {p.telugu_phonetic}
                     </p>
@@ -154,32 +199,45 @@ export const ReadingTheatre: React.FC = () => {
                 <AudioButton text={p.japanese} size="sm" />
               </div>
 
-              {/* English & Telugu sentence translations */}
-              <div className="text-xs text-kai-muted pt-2 border-t border-kai-border/40 space-y-0.5">
-                <p>{p.english}</p>
-                {(displayMode === 'telugu' || displayMode === 'bilingual') && (
-                  <p className="font-telugu text-kai-ink/80 dark:text-kai-dark-ink/80">{p.telugu}</p>
-                )}
-              </div>
+              {/* English & Telugu sentence translations (revealable) */}
+              {showTranslations && (
+                <div className="text-xs text-kai-muted pt-2 border-t border-kai-border/40 space-y-0.5 animate-in fade-in">
+                  <p>{p.english}</p>
+                  {(displayMode === 'telugu' || displayMode === 'bilingual') && (
+                    <p className="font-telugu text-kai-ink/80 dark:text-kai-dark-ink/80">{p.telugu}</p>
+                  )}
+                </div>
+              )}
 
               {/* Clickable Vocabulary in this sentence */}
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 <span className="text-3xs font-mono uppercase text-kai-faint mr-1">Lexicon:</span>
-                {p.vocabulary.map((vocab, vIdx) => (
-                  <button
-                    key={vIdx}
-                    onClick={() => handleSelectWord(vocab)}
-                    className="px-2 py-0.5 rounded-lg bg-white dark:bg-kai-dark-card border border-kai-border hover:border-kai-vermilion text-2xs font-japanese font-semibold text-kai-ink dark:text-kai-dark-ink transition-colors"
-                  >
-                    {vocab.word} ({vocab.reading})
-                  </button>
-                ))}
+                {p.vocabulary.map((vocab, vIdx) => {
+                  const vocabKey = `lex_${vocab.word}`;
+                  const isFav = favorites.includes(vocabKey);
+
+                  return (
+                    <button
+                      key={vIdx}
+                      onClick={() => handleSelectWord(vocab)}
+                      className={`px-2 py-0.5 rounded-lg border text-2xs font-japanese font-semibold transition-colors flex items-center gap-1 ${
+                        activeLexicon?.word === vocab.word
+                          ? 'bg-kai-indigo text-white border-kai-indigo'
+                          : 'bg-white dark:bg-kai-dark-card border-kai-border hover:border-kai-vermilion text-kai-ink dark:text-kai-dark-ink'
+                      }`}
+                    >
+                      <span>{vocab.word}</span>
+                      {furiganaEnabled && <span className="text-3xs opacity-80">({vocab.reading})</span>}
+                      {isFav && <Star size={10} className="fill-kai-gold text-kai-gold ml-0.5" />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Selected Word Popover Inspector */}
+        {/* Selected Word Popover Inspector with Bookmark Button */}
         {activeLexicon && (
           <div className="p-4 rounded-2xl bg-kai-indigo-bg dark:bg-kai-dark-card border border-kai-indigo/30 flex items-center justify-between gap-4 animate-in fade-in">
             <div className="space-y-0.5">
@@ -195,7 +253,24 @@ export const ReadingTheatre: React.FC = () => {
               </div>
             </div>
 
-            <AudioButton text={activeLexicon.word} size="sm" />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  toggleFavorite(`lex_${activeLexicon.word}`);
+                  soundEffects.playClick();
+                }}
+                className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors ${
+                  favorites.includes(`lex_${activeLexicon.word}`)
+                    ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300'
+                    : 'bg-white dark:bg-kai-dark-bg border-kai-border text-kai-muted hover:text-kai-ink'
+                }`}
+                title="Bookmark word to study list"
+              >
+                <Star size={14} className={favorites.includes(`lex_${activeLexicon.word}`) ? 'fill-amber-500 text-amber-500' : ''} />
+                <span className="text-2xs font-mono">{favorites.includes(`lex_${activeLexicon.word}`) ? 'Bookmarked' : 'Bookmark'}</span>
+              </button>
+              <AudioButton text={activeLexicon.word} size="sm" />
+            </div>
           </div>
         )}
 
@@ -247,9 +322,12 @@ export const ReadingTheatre: React.FC = () => {
                 </div>
 
                 {quizSubmitted && (
-                  <p className="text-2xs text-kai-muted font-mono pt-1">
-                    Explanation: {q.explanation_en}
-                  </p>
+                  <div className="p-3 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border text-2xs space-y-0.5 animate-in fade-in">
+                    <p className="text-kai-ink dark:text-white font-semibold">Explanation: {q.explanation_en}</p>
+                    {(displayMode === 'telugu' || displayMode === 'bilingual') && (
+                      <p className="font-telugu text-kai-vermilion">{q.explanation_te}</p>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
@@ -265,7 +343,7 @@ export const ReadingTheatre: React.FC = () => {
             </button>
           ) : (
             <div className="p-4 rounded-2xl bg-green-50 border border-green-200 text-green-900 text-xs font-semibold flex items-center justify-between">
-              <span>Quiz Completed! Full comprehension recorded.</span>
+              <span>Quiz Completed! Full comprehension recorded in your study profile.</span>
               <span className="font-mono text-kai-green font-bold">+50 XP</span>
             </div>
           )}

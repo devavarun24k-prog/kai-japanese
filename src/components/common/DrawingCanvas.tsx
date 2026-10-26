@@ -36,6 +36,15 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
     // Clear background
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
@@ -92,6 +101,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       ctx.lineTo(stroke[stroke.length - 1].x, stroke[stroke.length - 1].y);
       ctx.stroke();
     });
+
+    ctx.restore();
   };
 
   useEffect(() => {
@@ -103,8 +114,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const scaleX = width / rect.width;
+    const scaleY = height / rect.height;
 
     let clientX = 0;
     let clientY = 0;

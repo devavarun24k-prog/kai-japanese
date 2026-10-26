@@ -237,6 +237,40 @@ export const AITutorChat: React.FC = () => {
         <div ref={chatBottomRef} />
       </div>
 
+      {/* Quick Action Chips */}
+      <div className="px-4 py-2 border-t border-kai-border/50 bg-stone-50/50 dark:bg-kai-dark-bg/40 flex items-center gap-1.5 overflow-x-auto text-2xs">
+        <button
+          onClick={() => handleSendMessage('Start a 1-on-1 interactive quiz')}
+          className="px-2.5 py-1 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border hover:border-kai-vermilion text-kai-ink dark:text-kai-dark-ink font-medium whitespace-nowrap flex items-center gap-1"
+        >
+          <span>🎯 1-on-1 Quiz</span>
+        </button>
+        <button
+          onClick={() => handleSendMessage('Review my past mistakes')}
+          className="px-2.5 py-1 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border hover:border-kai-indigo text-kai-ink dark:text-kai-dark-ink font-medium whitespace-nowrap flex items-center gap-1"
+        >
+          <span>🔍 Review Mistakes</span>
+        </button>
+        <button
+          onClick={() => handleSendMessage('Explain the difference between は (wa) and が (ga)')}
+          className="px-2.5 py-1 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border hover:border-kai-border/80 text-kai-muted font-medium whitespace-nowrap"
+        >
+          は vs が
+        </button>
+        <button
+          onClick={() => handleSendMessage('How does Te-form verb conjugation work?')}
+          className="px-2.5 py-1 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border hover:border-kai-border/80 text-kai-muted font-medium whitespace-nowrap"
+        >
+          Te-form Rules
+        </button>
+        <button
+          onClick={() => handleSendMessage('Start a convenience store roleplay')}
+          className="px-2.5 py-1 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border hover:border-kai-border/80 text-kai-muted font-medium whitespace-nowrap"
+        >
+          🏪 Conbini Roleplay
+        </button>
+      </div>
+
       {/* Input Bar */}
       <div className="p-4 border-t border-kai-border dark:border-kai-dark-border bg-white dark:bg-kai-dark-card">
         <form

@@ -1,6 +1,6 @@
 // src/components/speaking/SpeakingStudio.tsx
-// Microphone-enabled Japanese speaking practice with mora-level evaluation and shadowing
-import React, { useState } from 'react';
+// Microphone-enabled Japanese speaking practice with mora-level evaluation, shadowing, and self-evaluation fallback
+import React, { useState, useRef } from 'react';
 import {
   Mic,
   MicOff,
@@ -11,15 +11,18 @@ import {
   Sparkles,
   ArrowRight,
   RotateCcw,
-  Headphones
+  Headphones,
+  Info,
+  ShieldCheck
 } from 'lucide-react';
 import { speechRecognitionService } from '../../services/speechRecognition';
 import { SpeechAssessmentResult } from '../../types';
 import { AudioButton } from '../common/AudioButton';
 import { useLearning } from '../../context/LearningContext';
 import { soundEffects } from '../../services/soundEffects';
+import { storageService } from '../../services/storageService';
 
-interface ShadowingSentence {
+export interface ShadowingSentence {
   id: string;
   japanese: string;
   romaji: string;
@@ -27,9 +30,10 @@ interface ShadowingSentence {
   english: string;
   telugu: string;
   situation: string;
+  pitch_tip: string;
 }
 
-const SPEAKING_PROMPTS: ShadowingSentence[] = [
+export const SPEAKING_PROMPTS: ShadowingSentence[] = [
   {
     id: 'sp_1',
     japanese: 'はじめまして。',
@@ -37,7 +41,8 @@ const SPEAKING_PROMPTS: ShadowingSentence[] = [
     telugu_phonetic: 'హజిమెమాషితె.',
     english: 'Nice to meet you (for the first time).',
     telugu: 'మిమ్మల్ని మొదటిసారి కలవడం సంతోషంగా ఉంది.',
-    situation: 'Meeting someone for the first time'
+    situation: 'Meeting someone for the first time',
+    pitch_tip: 'Starts low, rises gently on "ji-me", and resolves softly on "te".'
   },
   {
     id: 'sp_2',
@@ -46,7 +51,8 @@ const SPEAKING_PROMPTS: ShadowingSentence[] = [
     telugu_phonetic: 'కొరె వా హొన్ దెసు.',
     english: 'This is a book.',
     telugu: 'ఇది ఒక పుస్తకం.',
-    situation: 'Identifying objects'
+    situation: 'Identifying objects nearby',
+    pitch_tip: 'Particle "wa" carries a neutral pitch contour.'
   },
   {
     id: 'sp_3',
@@ -55,7 +61,8 @@ const SPEAKING_PROMPTS: ShadowingSentence[] = [
     telugu_phonetic: 'ఒమిజు ఒ కుదాసాయ్.',
     english: 'Water, please.',
     telugu: 'దయచేసి కొంచెం మంచినీళ్లు ఇవ్వండి.',
-    situation: 'Ordering at a restaurant / cafe'
+    situation: 'Ordering at a restaurant / cafe',
+    pitch_tip: 'Honorific "o" blends naturally into "mizu".'
   },
   {
     id: 'sp_4',
@@ -64,7 +71,68 @@ const SPEAKING_PROMPTS: ShadowingSentence[] = [
     telugu_phonetic: 'ఇమా, నాంజి దెసు కా?',
     english: 'What time is it now?',
     telugu: 'ఇప్పుడు సమయం ఎంత అయ్యింది?',
-    situation: 'Asking for time on the street'
+    situation: 'Asking for time on the street',
+    pitch_tip: 'Intonation rises slightly on the final question particle "ka".'
+  },
+  {
+    id: 'sp_5',
+    japanese: '駅はどこですか？',
+    romaji: 'Eki wa doko desu ka?',
+    telugu_phonetic: 'ఎకి వా దొకొ దెసు కా?',
+    english: 'Where is the station?',
+    telugu: 'రైల్వే స్టేషన్ ఎక్కడ ఉంది?',
+    situation: 'Asking for directions in a city',
+    pitch_tip: 'High pitch on "E", drops down on "ki".'
+  },
+  {
+    id: 'sp_6',
+    japanese: 'ありがとうございます。',
+    romaji: 'Arigatou gozaimasu.',
+    telugu_phonetic: 'అరిగాతౌ గొజాయ్మాసు.',
+    english: 'Thank you very much (polite).',
+    telugu: 'చాలా ధన్యవాదాలు (మర్యాదపూర్వకంగా).',
+    situation: 'Expressing gratitude',
+    pitch_tip: 'Elongate the "tou" sound smoothly: a-ri-ga-to-o.'
+  },
+  {
+    id: 'sp_7',
+    japanese: 'すみません、もう一度お願いします。',
+    romaji: 'Sumimasen, mou ichido onegaishimasu.',
+    telugu_phonetic: 'సుమిమాసెన్, మో ఇచిదొ ఒనెగాయిషిమాసు.',
+    english: 'Excuse me, could you repeat that once more?',
+    telugu: 'క్షమించండి, దయచేసి ఇంకొకసారి చెబుతారా?',
+    situation: 'Clarification during conversation',
+    pitch_tip: 'Pause naturally after "Sumimasen" before making the request.'
+  },
+  {
+    id: 'sp_8',
+    japanese: 'これを一つください。',
+    romaji: 'Kore o hitotsu kudasai.',
+    telugu_phonetic: 'కొరె ఒ హితొత్సు కుదాసాయ్.',
+    english: 'One of this, please.',
+    telugu: 'దయచేసి ఇందులో ఒకటి ఇవ్వండి.',
+    situation: 'Shopping at a bakery or kiosk',
+    pitch_tip: 'Counters like "hitotsu" keep each mora equal in duration.'
+  },
+  {
+    id: 'sp_9',
+    japanese: '今日はとてもいい天気ですね。',
+    romaji: 'Kyou wa totemo ii tenki desu ne.',
+    telugu_phonetic: 'క్యో వా తొతెమొ ఈ తెంకి దెసు నె.',
+    english: 'The weather is very nice today, isn\'t it?',
+    telugu: 'ఈ రోజు వాతావరణం చాలా బాగుంది కదా.',
+    situation: 'Casual small talk with a neighbor',
+    pitch_tip: 'Sentence-ending particle "ne" seeks gentle agreement.'
+  },
+  {
+    id: 'sp_10',
+    japanese: '日本語を勉強しています。',
+    romaji: 'Nihongo o benkyou shite imasu.',
+    telugu_phonetic: 'నిహొంగొ ఒ బెంక్యో షితె ఇమాసు.',
+    english: 'I am studying Japanese.',
+    telugu: 'నేను జపనీస్ భాషను చదువుకుంటున్నాను.',
+    situation: 'Self-introduction & language exchange',
+    pitch_tip: 'Smooth continuous flow from "benkyou" to "shite imasu".'
   }
 ];
 
@@ -75,7 +143,8 @@ export const SpeakingStudio: React.FC = () => {
   const [interimText, setInterimText] = useState<string>('');
   const [assessment, setAssessment] = useState<SpeechAssessmentResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const stopRecordingRef = React.useRef<(() => void) | null>(null);
+  const [selfShadowedDone, setSelfShadowedDone] = useState<boolean>(false);
+  const stopRecordingRef = useRef<(() => void) | null>(null);
 
   const current = SPEAKING_PROMPTS[currentIndex];
   const isSpeechSupported = speechRecognitionService.getIsSupported();
@@ -84,10 +153,11 @@ export const SpeakingStudio: React.FC = () => {
     setErrorMessage(null);
     setInterimText('');
     setAssessment(null);
+    setSelfShadowedDone(false);
 
     if (!isSpeechSupported) {
       setErrorMessage(
-        'Web Speech Recognition is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Safari for microphone features.'
+        'Web Speech Recognition is not supported by your browser. You can use the Listen & Shadow Self-Evaluation flow below!'
       );
       return;
     }
@@ -95,58 +165,72 @@ export const SpeakingStudio: React.FC = () => {
     soundEffects.playClick();
     setIsRecording(true);
 
-    const stopFn = speechRecognitionService.startListening(
-      (interim) => setInterimText(interim),
-      (finalText) => {
-        setIsRecording(false);
-        setInterimText(finalText);
+    try {
+      const stopFn = speechRecognitionService.startListening(
+        (interim) => setInterimText(interim),
+        (finalText) => {
+          setIsRecording(false);
+          setInterimText(finalText);
 
-        const result = speechRecognitionService.evaluatePronunciation(
-          finalText,
-          current.japanese,
-          current.romaji
-        );
-        setAssessment(result);
+          const result = speechRecognitionService.evaluatePronunciation(
+            finalText,
+            current.japanese,
+            current.romaji
+          );
+          setAssessment(result);
 
-        if (result.is_match) {
-          soundEffects.playCorrect();
-          awardXP(30, 'Shadowed Japanese sentence aloud');
-          recordAttempt({
-            item_id: current.id,
-            item_type: 'speaking',
-            skill: 'speaking',
-            question_type: 'shadowing',
-            user_response: finalText,
-            expected_response: current.japanese,
-            is_correct: true,
-            response_time_ms: 3000,
-            hint_used: false,
-            retry_count: 0
-          });
-        } else {
-          soundEffects.playWrong();
-          recordAttempt({
-            item_id: current.id,
-            item_type: 'speaking',
-            skill: 'speaking',
-            question_type: 'shadowing',
-            user_response: finalText,
-            expected_response: current.japanese,
-            is_correct: false,
-            error_category: 'pronunciation_error',
-            response_time_ms: 3000,
-            hint_used: false,
-            retry_count: 1
-          });
+          if (result.is_match) {
+            soundEffects.playCorrect();
+            awardXP(30, 'Shadowed Japanese sentence aloud');
+            recordAttempt({
+              item_id: current.id,
+              item_type: 'speaking',
+              skill: 'speaking',
+              question_type: 'shadowing',
+              user_response: finalText,
+              expected_response: current.japanese,
+              is_correct: true,
+              response_time_ms: 3200,
+              hint_used: false,
+              retry_count: 0
+            });
+          } else {
+            soundEffects.playWrong();
+            storageService.logMistake(
+              current.id,
+              'grammar',
+              current.japanese,
+              finalText,
+              current.japanese,
+              'pronunciation_mismatch',
+              `Recognized: ${finalText}. Expected: ${current.japanese} (${current.romaji})`,
+              `గుర్తించబడింది: ${finalText}. సరైన రూపం: ${current.japanese}`
+            );
+            recordAttempt({
+              item_id: current.id,
+              item_type: 'speaking',
+              skill: 'speaking',
+              question_type: 'shadowing',
+              user_response: finalText,
+              expected_response: current.japanese,
+              is_correct: false,
+              error_category: 'pronunciation_mismatch',
+              response_time_ms: 3800,
+              hint_used: false,
+              retry_count: 1
+            });
+          }
+        },
+        (errorStr) => {
+          setIsRecording(false);
+          setErrorMessage(`Microphone error: ${errorStr}. You can still practice via Self-Shadowing below!`);
         }
-      },
-      (err) => {
-        setIsRecording(false);
-        setErrorMessage(err);
-      }
-    );
-
-    stopRecordingRef.current = stopFn;
+      );
+      stopRecordingRef.current = stopFn;
+    } catch (err: any) {
+      setIsRecording(false);
+      setErrorMessage(`Microphone permission or connection issue: ${err?.message || err}. Use Self-Shadowing mode below.`);
+    }
   };
 
   const handleStopRecording = () => {
@@ -157,178 +241,230 @@ export const SpeakingStudio: React.FC = () => {
     setIsRecording(false);
   };
 
-  const nextPrompt = () => {
+  // Self-Evaluation Mode handler (works 100% on all browsers without mic)
+  const handleSelfEvaluation = (accurate: boolean) => {
+    setSelfShadowedDone(true);
+    if (accurate) {
+      soundEffects.playCorrect();
+      awardXP(25, 'Shadowed Japanese phrase (Self-Evaluated)');
+      recordAttempt({
+        item_id: current.id,
+        item_type: 'speaking',
+        skill: 'speaking',
+        question_type: 'shadowing_self',
+        user_response: 'Self-reported accurate',
+        expected_response: current.japanese,
+        is_correct: true,
+        response_time_ms: 4000,
+        hint_used: true,
+        retry_count: 0
+      });
+    } else {
+      soundEffects.playClick();
+      recordAttempt({
+        item_id: current.id,
+        item_type: 'speaking',
+        skill: 'speaking',
+        question_type: 'shadowing_self',
+        user_response: 'Self-reported needs practice',
+        expected_response: current.japanese,
+        is_correct: false,
+        error_category: 'pronunciation_self_practice',
+        response_time_ms: 4000,
+        hint_used: true,
+        retry_count: 1
+      });
+    }
+  };
+
+  const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % SPEAKING_PROMPTS.length);
     setAssessment(null);
     setInterimText('');
     setErrorMessage(null);
+    setSelfShadowedDone(false);
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300">
+    <div className="max-w-3xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-kai-border pb-4">
         <div>
           <h1 className="text-2xl font-bold font-serif_jp text-kai-ink dark:text-kai-dark-ink flex items-center gap-2">
-            <span>発音スタジオ</span>
+            <span>発音道場</span>
             <span className="text-sm font-sans font-normal text-kai-muted">Speaking Studio</span>
           </h1>
           <p className="text-xs text-kai-muted">
-            Microphone push-to-talk shadowing with Japanese mora-timing analysis.
+            10 Practical dialogue situations with mora evaluation, audio shadowing, and Telugu phonetic guides.
           </p>
         </div>
 
-        {/* Browser Microphone Status Indicator */}
-        <div className="flex items-center gap-2 text-2xs font-mono">
-          <span className={`w-2 h-2 rounded-full ${isSpeechSupported ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-kai-muted">
-            {isSpeechSupported ? 'Microphone Ready' : 'Browser STT Unavailable'}
-          </span>
-        </div>
+        <span className="text-2xs font-mono px-2.5 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-kai-muted">
+          Prompt {currentIndex + 1} of {SPEAKING_PROMPTS.length}
+        </span>
       </div>
 
-      {/* Target Sentence Card */}
-      <div className="p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi text-center space-y-5">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-kai-indigo-bg text-kai-indigo text-2xs font-mono font-bold">
-          <Headphones size={13} />
-          <span>{current.situation}</span>
+      {/* Main Practice Deck */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi space-y-6">
+        {/* Situation tag */}
+        <div className="flex items-center justify-between">
+          <span className="text-2xs font-mono px-2.5 py-0.5 rounded-full bg-kai-indigo-bg text-kai-indigo font-bold">
+            Scenario: {current.situation}
+          </span>
+          <AudioButton text={current.japanese} size="md" />
         </div>
 
-        {/* Japanese Big Sentence */}
-        <div className="space-y-2">
-          <div className="text-3xl sm:text-4xl font-bold font-japanese text-kai-ink dark:text-kai-dark-ink">
+        {/* Japanese Target Phrase */}
+        <div className="space-y-2 text-center py-4">
+          <h2 className="text-3xl sm:text-4xl font-bold font-japanese text-kai-ink dark:text-kai-dark-ink tracking-wide">
             {current.japanese}
-          </div>
-          <div className="font-mono text-sm text-kai-indigo dark:text-indigo-300 font-semibold">
-            {current.romaji}
-          </div>
+          </h2>
+
+          <p className="font-mono text-sm text-kai-indigo font-semibold">{current.romaji}</p>
+
           {(displayMode === 'telugu' || displayMode === 'bilingual') && (
-            <div className="font-telugu text-sm text-kai-vermilion font-medium">
+            <p className="font-telugu text-sm text-kai-vermilion font-medium">
               తెలుగు ఉచ్చారణ: {current.telugu_phonetic}
+            </p>
+          )}
+
+          <div className="pt-2 text-xs text-kai-muted space-y-0.5">
+            <p>"{current.english}"</p>
+            {(displayMode === 'telugu' || displayMode === 'bilingual') && (
+              <p className="font-telugu text-kai-ink/80 dark:text-kai-dark-ink/80">"{current.telugu}"</p>
+            )}
+          </div>
+        </div>
+
+        {/* Pitch Accent & Mora Tip */}
+        <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-kai-dark-bg/60 border border-kai-border/60 text-xs flex items-start gap-2 text-kai-muted">
+          <Info size={16} className="text-kai-indigo flex-shrink-0 mt-0.5" />
+          <div>
+            <strong className="text-kai-ink dark:text-kai-dark-ink">Pitch & Mora Advice: </strong>
+            {current.pitch_tip}
+          </div>
+        </div>
+
+        {/* Microphone / Recognition Controls */}
+        <div className="text-center space-y-3 pt-2 border-t border-kai-border/50">
+          {isSpeechSupported ? (
+            <div className="space-y-3">
+              {!isRecording ? (
+                <button
+                  onClick={handleStartRecording}
+                  className="px-6 py-3.5 rounded-2xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-semibold text-xs shadow-vermilion flex items-center justify-center gap-2 mx-auto transition-transform active:scale-95"
+                >
+                  <Mic size={18} />
+                  <span>Start Microphone Speaking Test</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleStopRecording}
+                  className="px-6 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs shadow-md flex items-center justify-center gap-2 mx-auto animate-pulse"
+                >
+                  <MicOff size={18} />
+                  <span>Listening... Click to Finish</span>
+                </button>
+              )}
+
+              {interimText && (
+                <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800 text-xs font-japanese font-semibold text-kai-ink dark:text-white">
+                  Heard: "{interimText}"
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 text-xs text-amber-900 dark:text-amber-300 space-y-1">
+              <p className="font-bold">Microphone API Note</p>
+              <p>Your browser does not expose Web Speech Recognition. Use the Self-Shadowing evaluation mode below!</p>
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 text-xs text-amber-800 dark:text-amber-300">
+              {errorMessage}
             </div>
           )}
         </div>
 
-        <div className="text-xs text-kai-muted space-y-0.5">
-          <p>Meaning: {current.english}</p>
-          {(displayMode === 'telugu' || displayMode === 'bilingual') && (
-            <p className="font-telugu text-kai-ink/80 dark:text-kai-dark-ink/80">
-              తెలుగు: {current.telugu}
+        {/* Assessment Results */}
+        {assessment && (
+          <div
+            className={`p-5 rounded-3xl border space-y-3 animate-in fade-in ${
+              assessment.is_match
+                ? 'bg-green-50 dark:bg-green-950/40 border-green-300 text-green-900 dark:text-green-200'
+                : 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {assessment.is_match ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+                <span className="font-bold text-sm">
+                  {assessment.is_match ? 'Speech Recognition Match!' : 'Pronunciation Needs Adjustment'}
+                </span>
+              </div>
+              <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/80 dark:bg-black/40">
+                {assessment.similarity_score}% Match
+              </span>
+            </div>
+
+            <p className="text-xs">
+              {displayMode === 'telugu' ? assessment.feedback_te : assessment.feedback_en}
+            </p>
+          </div>
+        )}
+
+        {/* Listen-Repeat Shadowing Self-Evaluation Fallback */}
+        <div className="p-4 rounded-2xl bg-stone-50 dark:bg-kai-dark-bg/60 border border-kai-border/60 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs font-mono uppercase text-kai-muted font-bold flex items-center gap-1.5">
+              <Headphones size={13} />
+              <span>Shadowing & Self-Evaluation Mode:</span>
+            </span>
+            <span className="text-3xs text-kai-muted">Always accessible</span>
+          </div>
+          <p className="text-2xs text-kai-muted">
+            Listen to the audio, shadow the phrase aloud 2-3 times, and evaluate your delivery:
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => handleSelfEvaluation(true)}
+              className="flex-1 py-2 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border hover:border-green-500 text-xs font-medium text-kai-ink dark:text-white flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <CheckCircle2 size={14} className="text-green-600" />
+              <span>I shadowed it cleanly (+25 XP)</span>
+            </button>
+            <button
+              onClick={() => handleSelfEvaluation(false)}
+              className="flex-1 py-2 rounded-xl bg-white dark:bg-kai-dark-card border border-kai-border hover:border-amber-500 text-xs font-medium text-kai-muted hover:text-kai-ink flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <RotateCcw size={14} className="text-amber-600" />
+              <span>Needs more practice</span>
+            </button>
+          </div>
+          {selfShadowedDone && (
+            <p className="text-3xs text-green-700 dark:text-green-400 font-mono text-center pt-1 animate-in fade-in">
+              ✓ Self-evaluation attempt recorded in your learning log.
             </p>
           )}
         </div>
 
-        {/* Audio Sample Player with slow rate option */}
-        <div className="pt-2 flex justify-center">
-          <AudioButton text={current.japanese} size="md" showSpeedControl={true} label="Listen to Native Sample" />
+        {/* Pitch Accent Disclosure Notice */}
+        <div className="p-3 rounded-xl bg-kai-bg/50 dark:bg-kai-dark-bg/40 border border-kai-border/40 text-3xs text-kai-faint space-y-0.5">
+          <p>
+            <strong>Note on Acoustic Pitch Accent:</strong> Web Speech Recognition evaluates mora transcription and phoneme match. It does not measure subtle acoustic pitch contours (e.g. atamadaka vs heiban). Practice shadowing against the native audio model for pitch accent mastery.
+          </p>
         </div>
-      </div>
 
-      {/* Push-to-Talk Microphone Controller */}
-      <div className="flex flex-col items-center justify-center gap-4 py-4">
-        {!isRecording ? (
-          <button
-            type="button"
-            onClick={handleStartRecording}
-            className="w-20 h-20 rounded-full bg-kai-vermilion hover:bg-kai-vermilion-dark text-white flex items-center justify-center shadow-vermilion transition-transform hover:scale-110 active:scale-95 group focus:outline-none"
-            title="Click to Record Japanese Speech"
-          >
-            <Mic size={32} className="group-hover:animate-pulse" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleStopRecording}
-            className="w-20 h-20 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg animate-pulse transition-transform scale-110"
-            title="Click to Stop Recording"
-          >
-            <MicOff size={32} />
-          </button>
-        )}
-
-        <span className="text-xs font-mono text-kai-muted">
-          {isRecording ? 'Listening... Speak Japanese now!' : 'Click the microphone & repeat the sentence'}
-        </span>
-
-        {/* Live Interim Transcript */}
-        {isRecording && interimText && (
-          <div className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-japanese text-kai-ink animate-pulse">
-            Heard so far: "{interimText}"
-          </div>
-        )}
-      </div>
-
-      {/* Error Message */}
-      {errorMessage && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
-          <AlertCircle size={16} className="text-amber-600 flex-shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {/* Assessment Feedback Report */}
-      {assessment && (
-        <div
-          className={`p-6 rounded-3xl border space-y-4 animate-in fade-in ${
-            assessment.is_match
-              ? 'bg-green-50/80 dark:bg-green-950/40 border-green-300 dark:border-green-800 text-green-900 dark:text-green-200'
-              : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-          }`}
+        {/* Next Prompt Button */}
+        <button
+          onClick={handleNext}
+          className="w-full py-3 rounded-2xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-semibold text-xs shadow-vermilion flex items-center justify-center gap-2 transition-transform active:scale-95"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {assessment.is_match ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-              <span className="font-bold text-base">
-                Pronunciation Rating: {assessment.accuracy_rating} ({assessment.similarity_score}%)
-              </span>
-            </div>
-
-            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-white/60 dark:bg-black/30">
-              Score: {assessment.similarity_score}/100
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-black/30 space-y-2 text-xs">
-            <div>
-              <span className="text-3xs font-mono uppercase text-kai-muted">What the system heard:</span>
-              <p className="font-japanese font-bold text-base text-kai-ink dark:text-white">
-                "{assessment.transcript || '(silence)'}"
-              </p>
-            </div>
-
-            <p className="leading-relaxed">{assessment.feedback_en}</p>
-
-            {(displayMode === 'telugu' || displayMode === 'bilingual') && (
-              <p className="font-telugu text-kai-vermilion">{assessment.feedback_te}</p>
-            )}
-          </div>
-
-          {/* Mismatched moras if any */}
-          {assessment.mismatched_moras.length > 0 && (
-            <div className="space-y-1 text-2xs">
-              <span className="font-bold font-mono">Phonetic Mora Discrepancies:</span>
-              <div className="flex flex-wrap gap-2">
-                {assessment.mismatched_moras.map((m, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 rounded bg-white dark:bg-black/40 border border-kai-border font-japanese"
-                  >
-                    Expected <strong>{m.mora}</strong> vs Heard <strong>{m.heard}</strong>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={nextPrompt}
-            className="w-full py-3 rounded-2xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-semibold text-xs shadow-vermilion flex items-center justify-center gap-2 transition-transform active:scale-95"
-          >
-            <span>Next Speaking Exercise</span>
-            <ArrowRight size={15} />
-          </button>
-        </div>
-      )}
+          <span>Next Speaking Prompt ({currentIndex + 1 < SPEAKING_PROMPTS.length ? `${currentIndex + 2}/${SPEAKING_PROMPTS.length}` : 'Loop'})</span>
+          <ArrowRight size={15} />
+        </button>
+      </div>
     </div>
   );
 };

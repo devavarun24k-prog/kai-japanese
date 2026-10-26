@@ -8,6 +8,7 @@ import { soundEffects } from '../services/soundEffects';
 import { fsrsService } from '../services/fsrsService';
 
 export type ActiveSection =
+  | 'landing'
   | 'dashboard'
   | 'kana'
   | 'vocab'
@@ -62,7 +63,7 @@ interface LearningContextType {
   }) => void;
   rateFSRSCard: (
     itemId: string,
-    itemType: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake',
+    itemType: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake' | 'sentence',
     rating: FSRSRating
   ) => void;
 }
@@ -161,7 +162,7 @@ export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const rateFSRSCard = (
     itemId: string,
-    itemType: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake',
+    itemType: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake' | 'sentence',
     rating: FSRSRating
   ) => {
     const cards = storageService.getCards();

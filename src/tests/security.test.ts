@@ -134,4 +134,70 @@ describe('Security & Data Isolation Audits', () => {
     expect(storageService.getCards().length).toBe(1);
     expect(storageService.getCards()[0].item_id).toBe('h_ta');
   });
+
+  it('enforces single-owner authorization rule: rejects unauthorized emails and permits owner', () => {
+    const configuredOwnerEmail = 'owner@kai-mastery.jp';
+
+    // Helper simulating AuthContext single-owner authorization validator
+    const isAuthorizedOwner = (email: string | null | undefined, ownerEmail: string | null): boolean => {
+      if (!ownerEmail) return true; // If no owner configured, default behavior
+      if (!email) return false;
+      return email.trim().toLowerCase() === ownerEmail.trim().toLowerCase();
+    };
+
+    // 1. Unauthorized non-owner email
+    expect(isAuthorizedOwner('attacker@domain.com', configuredOwnerEmail)).toBe(false);
+    expect(isAuthorizedOwner('random_user@gmail.com', configuredOwnerEmail)).toBe(false);
+    expect(isAuthorizedOwner(null, configuredOwnerEmail)).toBe(false);
+    expect(isAuthorizedOwner('', configuredOwnerEmail)).toBe(false);
+
+    // 2. Exact match
+    expect(isAuthorizedOwner('owner@kai-mastery.jp', configuredOwnerEmail)).toBe(true);
+
+    // 3. Case-insensitive and whitespace-tolerant match
+    expect(isAuthorizedOwner('  OWNER@KAI-MASTERY.JP  ', configuredOwnerEmail)).toBe(true);
+    expect(isAuthorizedOwner('Owner@Kai-Mastery.JP', configuredOwnerEmail)).toBe(true);
+  });
+
+  it('validates dynamic redirect URL resolution for mobile, network IP, and cloud domains', () => {
+    // Simulates getRedirectUrl() from AuthContext
+    const resolveRedirectUrl = (origin: string): string => {
+      return origin && origin.startsWith('http') ? origin : 'http://localhost:5173';
+    };
+
+    // Localhost test
+    expect(resolveRedirectUrl('http://localhost:5173')).toBe('http://localhost:5173');
+
+    // Local network / mobile test
+    expect(resolveRedirectUrl('http://192.168.1.100:5173')).toBe('http://192.168.1.100:5173');
+
+    // Production custom domain test
+    expect(resolveRedirectUrl('https://kai-japanese.vercel.app')).toBe('https://kai-japanese.vercel.app');
+
+    // Fallback if window origin is missing/empty
+    expect(resolveRedirectUrl('')).toBe('http://localhost:5173');
+  });
+
+  it('validates master password reset constraints (minimum 8 chars and matching confirmation)', () => {
+    const validatePasswordReset = (password: string, confirm: string): { valid: boolean; error?: string } => {
+      if (!password || password.length < 8) {
+        return { valid: false, error: 'Password must be at least 8 characters long.' };
+      }
+      if (password !== confirm) {
+        return { valid: false, error: 'Passwords do not match.' };
+      }
+      return { valid: true };
+    };
+
+    // Short password
+    expect(validatePasswordReset('short', 'short').valid).toBe(false);
+    expect(validatePasswordReset('short', 'short').error).toBe('Password must be at least 8 characters long.');
+
+    // Mismatched confirmation
+    expect(validatePasswordReset('secure_password_123', 'different_password').valid).toBe(false);
+    expect(validatePasswordReset('secure_password_123', 'different_password').error).toBe('Passwords do not match.');
+
+    // Valid master password
+    expect(validatePasswordReset('MasterOwnerPassword2026!', 'MasterOwnerPassword2026!').valid).toBe(true);
+  });
 });

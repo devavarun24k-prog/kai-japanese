@@ -70,6 +70,29 @@ export interface KanaItem {
   common_mistakes: string[]; // Confusable characters e.g. ["さ", "き", "ち"]
 }
 
+export interface KanaLessonQuestion {
+  id: string;
+  type: 'identify_reading' | 'match_character' | 'listen_select' | 'stroke_count';
+  prompt: string;
+  promptTe?: string;
+  characterToTest?: string;
+  options: { text: string; reading?: string; isCorrect: boolean }[];
+  explanationEn: string;
+  explanationTe: string;
+}
+
+export interface KanaLesson {
+  id: string;
+  lessonNumber: number;
+  title: string;
+  titleTe: string;
+  row: string;
+  characterIds: string[];
+  summaryEn: string;
+  summaryTe: string;
+  practiceQuestions: KanaLessonQuestion[];
+}
+
 // Vocabulary types
 export type VocabCategory =
   | 'greetings'
@@ -182,6 +205,14 @@ export interface GrammarMistake {
   explanation_te: string;
 }
 
+export interface GrammarPracticeQuestion {
+  prompt: string;
+  options: string[];
+  correct_index: number;
+  explanation_en: string;
+  explanation_te: string;
+}
+
 export interface GrammarPattern {
   id: string;
   title: string;
@@ -196,6 +227,7 @@ export interface GrammarPattern {
   formation_rules: { rule: string; example: string }[];
   examples: GrammarExample[];
   common_mistakes: GrammarMistake[];
+  practice_questions?: GrammarPracticeQuestion[];
 }
 
 // Reading Stories
@@ -245,7 +277,7 @@ export type FSRSRating = 1 | 2 | 3 | 4; // 1: Again, 2: Hard, 3: Good, 4: Easy
 export interface FSRSCard {
   card_id: string;
   item_id: string;
-  item_type: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake';
+  item_type: 'kana' | 'vocab' | 'kanji' | 'grammar' | 'mistake' | 'sentence';
   state: FSRSState;
   due: string; // ISO date
   stability: number;
