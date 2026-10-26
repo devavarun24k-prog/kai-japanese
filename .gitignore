@@ -9,6 +9,7 @@ dist-ssr
 Thumbs.db
 release
 scratch
+android
 android/.gradle
 android/build
 android/app/build
