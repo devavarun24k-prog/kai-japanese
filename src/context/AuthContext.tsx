@@ -1,10 +1,15 @@
 // src/context/AuthContext.tsx
-// Secure authentication context with Supabase Auth & cryptographic salted owner authentication
+// Secure authentication context with Supabase Auth & protected local demo isolation
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { storageService } from '../services/storageService';
 import { UserProfile } from '../types';
 import { hashPasswordWithSalt, generateRandomSalt, constantTimeCompare } from '../utils/crypto';
+
+// Strict production check: Vite production build or explicit production environment
+export const isProductionMode = Boolean(
+  import.meta.env.PROD || import.meta.env.VITE_APP_ENV === 'production'
+);
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -12,6 +17,7 @@ interface AuthContextType {
   userEmail: string | null;
   profile: UserProfile;
   isSupabaseMode: boolean;
+  isProductionMode: boolean;
   isOwnerConfigured: boolean;
   loginWithPassword: (password: string, email?: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
@@ -41,57 +47,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const checkSession = async () => {
-      // 1. Check Supabase Auth if configured
+      // 1. Primary path: Supabase Auth (Mandatory in production)
       if (isSupabaseConfigured && supabase) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session && session.user) {
+            storageService.setUserId(session.user.id);
+            await storageService.syncFromSupabase();
             setIsAuthenticated(true);
             setUserEmail(session.user.email || null);
-            await storageService.syncFromSupabase();
             setProfile(storageService.getProfile());
           } else {
+            storageService.setUserId(null);
+            storageService.clearMemoryState();
             setIsAuthenticated(false);
             setUserEmail(null);
           }
 
           supabase.auth.onAuthStateChange(async (_event, session) => {
             if (session && session.user) {
+              storageService.setUserId(session.user.id);
+              await storageService.syncFromSupabase();
               setIsAuthenticated(true);
               setUserEmail(session.user.email || null);
-              await storageService.syncFromSupabase();
               setProfile(storageService.getProfile());
             } else {
+              storageService.setUserId(null);
+              storageService.clearMemoryState();
               setIsAuthenticated(false);
               setUserEmail(null);
             }
           });
         } catch (e) {
           console.error('Supabase session check error:', e);
+          setIsAuthenticated(false);
         }
         setIsLoading(false);
         return;
       }
 
-      // 2. Check local owner session token validity (24-hour expiration)
+      // 2. Production Security Enforcement:
+      // If running in production mode and Supabase is not configured, NEVER allow local demo authentication bypass.
+      if (isProductionMode) {
+        storageService.setUserId(null);
+        storageService.clearMemoryState();
+        setIsAuthenticated(false);
+        setUserEmail(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Development / Local Demo Mode Only:
+      // Validate that local session token is valid and corresponds to an initialized owner hash & salt.
       const token = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
       const expiry = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY);
       const email = localStorage.getItem(AUTH_STORAGE_KEYS.EMAIL);
+      const storedHash = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_HASH);
+      const storedSalt = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_SALT);
 
-      if (token && expiry) {
+      // Reject arbitrary or injected tokens: both hash and salt must exist and token must have valid structure
+      if (token && expiry && storedHash && storedSalt && token.startsWith('kai_demo_')) {
         const expiryTime = parseInt(expiry, 10);
-        if (Date.now() < expiryTime) {
+        if (!isNaN(expiryTime) && Date.now() < expiryTime) {
+          storageService.setUserId('local_owner');
           setIsAuthenticated(true);
-          setUserEmail(email || profile.email);
+          setUserEmail(email || 'owner@local.kai');
+          setProfile(storageService.getProfile());
         } else {
           // Token expired: clear credentials
           localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
           localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY);
           localStorage.removeItem(AUTH_STORAGE_KEYS.EMAIL);
+          storageService.setUserId(null);
+          storageService.clearMemoryState();
           setIsAuthenticated(false);
           setUserEmail(null);
         }
       } else {
+        storageService.setUserId(null);
+        storageService.clearMemoryState();
         setIsAuthenticated(false);
         setUserEmail(null);
       }
@@ -102,14 +136,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkSession();
   }, []);
 
-  // First-time owner setup when Supabase is not configured
+  // Setup owner account in local demo mode (disabled in production)
   const setupOwnerAccount = async (
     password: string,
     email: string,
     displayName: string
   ): Promise<{ success: boolean; error?: string }> => {
+    if (isProductionMode) {
+      return {
+        success: false,
+        error: 'Local owner setup is disabled in production. Please configure Supabase Auth.'
+      };
+    }
+
     if (!password || password.length < 8) {
-      return { success: false, error: 'Password must be at least 8 characters long for adequate entropy.' };
+      return { success: false, error: 'Password must be at least 8 characters long.' };
     }
     if (!email || !email.includes('@')) {
       return { success: false, error: 'Please enter a valid owner email address.' };
@@ -123,16 +164,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(AUTH_STORAGE_KEYS.OWNER_HASH, hash);
       setIsOwnerConfigured(true);
 
-      // Create session
-      const token = `kai_owner_${Date.now()}_${generateRandomSalt().slice(0, 8)}`;
-      const expiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      // Create structured demo session
+      const token = `kai_demo_${Date.now()}_${generateRandomSalt().slice(0, 10)}`;
+      const expiry = Date.now() + 24 * 60 * 60 * 1000;
 
       localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
       localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY, expiry.toString());
       localStorage.setItem(AUTH_STORAGE_KEYS.EMAIL, email);
 
+      storageService.setUserId('local_owner');
       const newProfile: UserProfile = {
         ...profile,
+        id: 'local_owner',
         email,
         display_name: displayName.trim() || 'Sensei Learner',
         updated_at: new Date().toISOString()
@@ -168,6 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { success: false, error: error.message };
         }
         if (data.session) {
+          storageService.setUserId(data.session.user.id);
           setIsAuthenticated(true);
           setUserEmail(data.session.user.email || null);
           await storageService.syncFromSupabase();
@@ -181,7 +225,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Mode B: Cryptographic Salted Owner Verification
+    // In production, block local fallback
+    if (isProductionMode) {
+      setIsLoading(false);
+      return {
+        success: false,
+        error: 'Production requires Supabase Auth. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+      };
+    }
+
+    // Mode B: Local Demo Verification
     const storedHash = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_HASH);
     const storedSalt = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_SALT);
 
@@ -189,7 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
       return {
         success: false,
-        error: 'No owner account has been configured yet. Please complete the initial owner setup.'
+        error: 'No owner account configured yet. Complete the initial owner setup.'
       };
     }
 
@@ -198,15 +251,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const isMatch = constantTimeCompare(computedHash, storedHash);
 
       if (isMatch) {
-        const token = `kai_owner_${Date.now()}_${generateRandomSalt().slice(0, 8)}`;
+        const token = `kai_demo_${Date.now()}_${generateRandomSalt().slice(0, 10)}`;
         const expiry = Date.now() + 24 * 60 * 60 * 1000;
 
         localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
         localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY, expiry.toString());
         localStorage.setItem(AUTH_STORAGE_KEYS.EMAIL, profile.email);
 
+        storageService.setUserId('local_owner');
         setIsAuthenticated(true);
         setUserEmail(profile.email);
+        setProfile(storageService.getProfile());
         setIsLoading(false);
         return { success: true };
       } else {
@@ -228,7 +283,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isSupabaseConfigured || !supabase) {
       return {
         success: false,
-        error: 'Supabase is not configured in this environment. Set up an owner password or configure Supabase keys.'
+        error: 'Supabase is not configured. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
       };
     }
 
@@ -250,13 +305,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.session) {
+        storageService.setUserId(data.session.user.id);
         setIsAuthenticated(true);
         setUserEmail(data.session.user.email || null);
+        setProfile(storageService.getProfile());
         return { success: true };
       } else {
         return {
           success: true,
-          error: 'Registration confirmation email sent. Please check your inbox to verify your email.'
+          error: 'Confirmation email sent. Please verify your email to log in.'
         };
       }
     } catch (e: unknown) {
@@ -265,18 +322,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Logout
+  // Secure Logout: cleans up active user session and clears in-memory state
   const logout = async () => {
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.auth.signOut();
       } catch (e) {}
     }
+    // Remove auth tokens
     localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
     localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY);
     localStorage.removeItem(AUTH_STORAGE_KEYS.EMAIL);
+
+    // Unset user ID and clear all memory references
+    storageService.clearMemoryState();
+    storageService.setUserId(null);
+
     setIsAuthenticated(false);
     setUserEmail(null);
+    setProfile(storageService.getProfile());
   };
 
   const updateProfile = (updated: Partial<UserProfile>) => {
@@ -293,6 +357,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userEmail,
         profile,
         isSupabaseMode: isSupabaseConfigured,
+        isProductionMode,
         isOwnerConfigured,
         loginWithPassword,
         signUp,

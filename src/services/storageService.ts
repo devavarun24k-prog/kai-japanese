@@ -1,5 +1,10 @@
 // src/services/storageService.ts
-// Robust local persistence layer with dynamic metrics derivation and full Supabase synchronization
+// Robust local persistence layer with user-scoped namespacing, legacy migration, and Supabase synchronization
+// SECURITY NOTICE:
+// localStorage is a client-side store accessible to any script or user with browser DevTools access on this machine.
+// User-namespacing isolates cross-user session bleeding within the application context.
+// For zero-trust security and multi-device persistence, Supabase Auth and server-side RLS are enforced.
+
 import {
   UserProfile,
   UserStats,
@@ -11,7 +16,20 @@ import {
 } from '../types';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
-const STORAGE_KEYS = {
+// Base keys used for scoped generation
+const BASE_STORAGE_KEYS = {
+  PROFILE: 'profile',
+  STATS: 'stats',
+  FSRS_CARDS: 'fsrs_cards',
+  ATTEMPTS: 'attempts',
+  MISTAKES: 'mistakes',
+  QUESTS: 'quests',
+  ACHIEVEMENTS: 'achievements',
+  CUSTOM_DECKS: 'custom_decks',
+} as const;
+
+// Legacy unscoped storage keys for backwards compatibility and migration
+const LEGACY_STORAGE_KEYS = {
   PROFILE: 'kai_user_profile',
   STATS: 'kai_user_stats',
   FSRS_CARDS: 'kai_fsrs_cards',
@@ -19,12 +37,11 @@ const STORAGE_KEYS = {
   MISTAKES: 'kai_mistake_records',
   QUESTS: 'kai_daily_quests',
   ACHIEVEMENTS: 'kai_achievements',
-  CUSTOM_DECKS: 'kai_custom_decks',
 };
 
 // Default profile for new learner
 const DEFAULT_PROFILE: UserProfile = {
-  id: 'kai_owner_user',
+  id: 'guest_user',
   email: 'learner@kai.japanese',
   display_name: 'Sensei Apprentice',
   jlpt_target: 'N5',
@@ -56,28 +73,106 @@ const DEFAULT_STATS: UserStats = {
 };
 
 class StorageService {
+  private currentUserId: string | null = null;
+
+  // Set the active authenticated user ID and trigger migration if needed
+  public setUserId(userId: string | null): void {
+    if (this.currentUserId === userId) return;
+    this.currentUserId = userId;
+    if (userId) {
+      this.migrateLegacyDataIfNeeded(userId);
+    }
+  }
+
+  public getUserId(): string | null {
+    return this.currentUserId;
+  }
+
+  // Clear in-memory session reference (called on logout)
+  public clearMemoryState(): void {
+    this.currentUserId = null;
+  }
+
+  // Scoped key generator ensuring one user cannot read/write another user's records
+  private getKey(baseKey: string): string {
+    const scope = this.currentUserId || 'guest';
+    return `kai_user_${scope}_${baseKey}`;
+  }
+
+  // Safely migrate legacy unscoped data to the first active user's scoped namespace
+  private migrateLegacyDataIfNeeded(userId: string): void {
+    try {
+      const legacyCardKey = LEGACY_STORAGE_KEYS.FSRS_CARDS;
+      const userCardKey = this.getKey(BASE_STORAGE_KEYS.FSRS_CARDS);
+
+      const legacyCards = localStorage.getItem(legacyCardKey);
+      const userCards = localStorage.getItem(userCardKey);
+
+      // If legacy unscoped data exists and target user has no scoped data yet, migrate
+      if (legacyCards && !userCards) {
+        // 1. Create a safe, timestamped backup of the legacy data
+        const backupPayload: Record<string, string | null> = {};
+        Object.entries(LEGACY_STORAGE_KEYS).forEach(([name, legacyKey]) => {
+          backupPayload[name] = localStorage.getItem(legacyKey);
+        });
+        localStorage.setItem(`kai_legacy_backup_${Date.now()}`, JSON.stringify(backupPayload));
+
+        // 2. Copy each legacy key to the user's scoped key
+        const profile = localStorage.getItem(LEGACY_STORAGE_KEYS.PROFILE);
+        if (profile) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.PROFILE), profile);
+
+        const stats = localStorage.getItem(LEGACY_STORAGE_KEYS.STATS);
+        if (stats) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.STATS), stats);
+
+        localStorage.setItem(userCardKey, legacyCards);
+
+        const attempts = localStorage.getItem(LEGACY_STORAGE_KEYS.ATTEMPTS);
+        if (attempts) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ATTEMPTS), attempts);
+
+        const mistakes = localStorage.getItem(LEGACY_STORAGE_KEYS.MISTAKES);
+        if (mistakes) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.MISTAKES), mistakes);
+
+        const quests = localStorage.getItem(LEGACY_STORAGE_KEYS.QUESTS);
+        if (quests) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.QUESTS), quests);
+
+        const achs = localStorage.getItem(LEGACY_STORAGE_KEYS.ACHIEVEMENTS);
+        if (achs) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ACHIEVEMENTS), achs);
+      }
+    } catch (err) {
+      console.warn('Legacy data migration warning:', err);
+    }
+  }
+
   // Profiles
   public getProfile(): UserProfile {
+    if (!this.currentUserId) {
+      return DEFAULT_PROFILE;
+    }
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.PROFILE);
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.PROFILE));
       if (data) return JSON.parse(data);
     } catch (e) {}
-    this.saveProfile(DEFAULT_PROFILE);
-    return DEFAULT_PROFILE;
+    const newProfile = { ...DEFAULT_PROFILE, id: this.currentUserId };
+    this.saveProfile(newProfile);
+    return newProfile;
   }
 
   public saveProfile(profile: UserProfile): void {
+    if (!this.currentUserId) return;
     try {
       profile.updated_at = new Date().toISOString();
-      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.PROFILE), JSON.stringify(profile));
       this.syncProfileToSupabase(profile);
     } catch (e) {}
   }
 
   // Stats
   public getStats(): UserStats {
+    if (!this.currentUserId) {
+      return DEFAULT_STATS;
+    }
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.STATS);
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.STATS));
       if (data) return JSON.parse(data);
     } catch (e) {}
     this.saveStats(DEFAULT_STATS);
@@ -85,8 +180,9 @@ class StorageService {
   }
 
   public saveStats(stats: UserStats): void {
+    if (!this.currentUserId) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(stats));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.STATS), JSON.stringify(stats));
     } catch (e) {}
   }
 
@@ -131,16 +227,18 @@ class StorageService {
 
   // FSRS Cards
   public getCards(): FSRSCard[] {
+    if (!this.currentUserId) return [];
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.FSRS_CARDS);
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.FSRS_CARDS));
       if (data) return JSON.parse(data);
     } catch (e) {}
     return [];
   }
 
   public saveCards(cards: FSRSCard[]): void {
+    if (!this.currentUserId) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.FSRS_CARDS, JSON.stringify(cards));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.FSRS_CARDS), JSON.stringify(cards));
       this.recalculateDerivedMetrics(cards, this.getAttempts());
     } catch (e) {}
   }
@@ -161,8 +259,9 @@ class StorageService {
 
   // Learning Attempts
   public getAttempts(): LearningAttempt[] {
+    if (!this.currentUserId) return [];
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.ATTEMPTS);
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.ATTEMPTS));
       if (data) return JSON.parse(data);
     } catch (e) {}
     return [];
@@ -175,12 +274,14 @@ class StorageService {
       timestamp: new Date().toISOString(),
     };
 
+    if (!this.currentUserId) return fullAttempt;
+
     const attempts = this.getAttempts();
     attempts.unshift(fullAttempt);
     if (attempts.length > 1000) attempts.length = 1000;
 
     try {
-      localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(attempts));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ATTEMPTS), JSON.stringify(attempts));
     } catch (e) {}
 
     this.recalculateDerivedMetrics(this.getCards(), attempts);
@@ -220,8 +321,9 @@ class StorageService {
 
   // Mistake Notebook
   public getMistakes(): MistakeRecord[] {
+    if (!this.currentUserId) return [];
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.MISTAKES);
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.MISTAKES));
       if (data) return JSON.parse(data);
     } catch (e) {}
     return [];
@@ -237,6 +339,8 @@ class StorageService {
     notesEn: string,
     notesTe: string
   ): void {
+    if (!this.currentUserId) return;
+
     const mistakes = this.getMistakes();
     const existing = mistakes.find((m) => m.item_id === itemId && m.mistaken_input === mistakenInput);
 
@@ -267,26 +371,28 @@ class StorageService {
     }
 
     try {
-      localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakes));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.MISTAKES), JSON.stringify(mistakes));
     } catch (e) {}
 
     this.syncMistakeToSupabase(recordToSync);
   }
 
   public resolveMistake(id: string): void {
+    if (!this.currentUserId) return;
     const mistakes = this.getMistakes();
     const target = mistakes.find((m) => m.id === id);
     if (target) {
       target.resolved = true;
-      localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakes));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.MISTAKES), JSON.stringify(mistakes));
       this.syncMistakeToSupabase(target);
     }
   }
 
-  // Daily Quests - Start at ZERO progress
+  // Daily Quests
   public getQuests(): DailyQuest[] {
+    if (!this.currentUserId) return [];
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.QUESTS);
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.QUESTS));
       if (data) return JSON.parse(data);
     } catch (e) {}
     return [
@@ -338,8 +444,9 @@ class StorageService {
   }
 
   public saveQuests(quests: DailyQuest[]): void {
+    if (!this.currentUserId) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.QUESTS, JSON.stringify(quests));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.QUESTS), JSON.stringify(quests));
     } catch (e) {}
   }
 
@@ -356,10 +463,11 @@ class StorageService {
     }
   }
 
-  // Achievements - All start LOCKED
+  // Achievements
   public getAchievements(): Achievement[] {
+    if (!this.currentUserId) return [];
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.ACHIEVEMENTS));
       if (data) return JSON.parse(data);
     } catch (e) {}
     return [
@@ -422,15 +530,17 @@ class StorageService {
   }
 
   public saveAchievements(achs: Achievement[]): void {
+    if (!this.currentUserId) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(achs));
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ACHIEVEMENTS), JSON.stringify(achs));
     } catch (e) {}
   }
 
-  // Full JSON Export / Import
+  // Full JSON Export / Import for current user
   public exportFullBackup(): string {
     const backup = {
       version: '1.0',
+      user_id: this.currentUserId,
       exported_at: new Date().toISOString(),
       profile: this.getProfile(),
       stats: this.getStats(),
@@ -444,24 +554,28 @@ class StorageService {
   }
 
   public importBackup(jsonString: string): boolean {
+    if (!this.currentUserId) return false;
     try {
       const data = JSON.parse(jsonString);
-      if (data.profile) localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(data.profile));
-      if (data.stats) localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(data.stats));
-      if (data.cards) localStorage.setItem(STORAGE_KEYS.FSRS_CARDS, JSON.stringify(data.cards));
-      if (data.attempts) localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(data.attempts));
-      if (data.mistakes) localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(data.mistakes));
-      if (data.quests) localStorage.setItem(STORAGE_KEYS.QUESTS, JSON.stringify(data.quests));
-      if (data.achievements) localStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(data.achievements));
+      if (data.profile) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.PROFILE), JSON.stringify(data.profile));
+      if (data.stats) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.STATS), JSON.stringify(data.stats));
+      if (data.cards) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.FSRS_CARDS), JSON.stringify(data.cards));
+      if (data.attempts) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ATTEMPTS), JSON.stringify(data.attempts));
+      if (data.mistakes) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.MISTAKES), JSON.stringify(data.mistakes));
+      if (data.quests) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.QUESTS), JSON.stringify(data.quests));
+      if (data.achievements) localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ACHIEVEMENTS), JSON.stringify(data.achievements));
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  // Data Purge
+  // Data Purge: Only purges the active user's scoped keys
   public purgeAllUserData(): void {
-    Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+    if (!this.currentUserId) return;
+    Object.values(BASE_STORAGE_KEYS).forEach((baseKey) => {
+      localStorage.removeItem(this.getKey(baseKey));
+    });
   }
 
   // Supabase Sync Up
@@ -555,12 +669,14 @@ class StorageService {
     } catch (e) {}
   }
 
-  // Supabase Pull / Restore
+  // Supabase Pull / Restore into user-scoped namespace
   public async syncFromSupabase(): Promise<void> {
     if (!isSupabaseConfigured || !supabase) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      this.setUserId(session.user.id);
 
       // 1. Fetch Profile
       const { data: profileData } = await supabase
@@ -590,7 +706,7 @@ class StorageService {
         .eq('user_id', session.user.id);
 
       if (cardData && cardData.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.FSRS_CARDS, JSON.stringify(cardData));
+        localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.FSRS_CARDS), JSON.stringify(cardData));
       }
 
       // 3. Fetch Mistakes
@@ -600,7 +716,7 @@ class StorageService {
         .eq('user_id', session.user.id);
 
       if (mistakeData && mistakeData.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakeData));
+        localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.MISTAKES), JSON.stringify(mistakeData));
       }
 
       // 4. Fetch Attempts
@@ -612,7 +728,7 @@ class StorageService {
         .limit(200);
 
       if (attemptData && attemptData.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(attemptData));
+        localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.ATTEMPTS), JSON.stringify(attemptData));
       }
 
       // Recalculate

@@ -39,7 +39,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [aiProvider, setAiProvider] = useState<'builtin' | 'gemini'>(
     aiService.getConfig().provider === 'gemini' ? 'gemini' : 'builtin'
   );
-  const [apiKey, setApiKey] = useState<string>(aiService.getConfig().apiKey || '');
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [confirmPurge, setConfirmPurge] = useState<boolean>(false);
 
@@ -47,8 +46,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const handleSaveAISettings = () => {
     aiService.saveConfig({
-      provider: aiProvider,
-      apiKey: apiKey.trim() || undefined
+      provider: aiProvider
     });
     setSaveSuccess(true);
     soundEffects.playCorrect();
@@ -186,23 +184,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   onChange={() => setAiProvider('gemini')}
                   className="accent-kai-vermilion"
                 />
-                <span>Google Gemini API (Live AI Generation)</span>
+                <span>Google Gemini (Server-side Secure Edge Proxy)</span>
               </label>
             </div>
           </div>
 
           {aiProvider === 'gemini' && (
-            <div className="space-y-1.5 pt-1">
-              <label className="text-3xs font-mono text-kai-muted">
-                Gemini API Key (stored exclusively on client local storage)
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 dark:bg-kai-dark-bg border border-kai-border text-xs font-mono"
-              />
+            <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 text-3xs text-indigo-950 dark:text-indigo-200 space-y-1">
+              <p className="font-bold">Zero-Secret Architecture:</p>
+              <p className="opacity-90 leading-relaxed">
+                Gemini API requests are routed through a Supabase Edge Function where API keys are kept in server-side environment secrets. No API keys are stored in your browser.
+              </p>
             </div>
           )}
 

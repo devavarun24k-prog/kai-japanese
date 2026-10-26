@@ -18,6 +18,7 @@ import { soundEffects } from '../../services/soundEffects';
 export const AuthGateway: React.FC = () => {
   const {
     isSupabaseMode,
+    isProductionMode,
     isOwnerConfigured,
     loginWithPassword,
     signUp,
@@ -110,57 +111,80 @@ export const AuthGateway: React.FC = () => {
             <span>
               {isSupabaseMode
                 ? 'Secured with Supabase Authentication & RLS'
-                : 'Secured with Salted SHA-256 Cryptographic Master Lock'}
+                : isProductionMode
+                ? 'Production Mode: Supabase Required'
+                : 'Local Demo Mode (Development Only)'}
             </span>
           </div>
         </div>
 
-        {/* Mode Selector for Supabase mode */}
-        {isSupabaseMode && (
-          <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-kai-dark-bg border border-kai-border/50 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('signin');
-                setErrorMsg(null);
-              }}
-              className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
-                mode === 'signin'
-                  ? 'bg-white dark:bg-kai-dark-card text-kai-ink dark:text-white shadow-sm'
-                  : 'text-kai-muted'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('signup');
-                setErrorMsg(null);
-              }}
-              className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
-                mode === 'signup'
-                  ? 'bg-white dark:bg-kai-dark-card text-kai-ink dark:text-white shadow-sm'
-                  : 'text-kai-muted'
-              }`}
-            >
-              Register Account
-            </button>
-          </div>
-        )}
-
-        {/* Initial Setup Banner if not configured */}
-        {!isSupabaseMode && !isOwnerConfigured && (
-          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
-            <span className="font-bold flex items-center gap-1.5">
-              <Sparkles size={14} className="text-amber-600" />
-              <span>Initial Setup Required:</span>
-            </span>
-            <p className="text-2xs leading-relaxed opacity-90">
-              No default passcodes exist. Create your secure personal master password to protect your learning history.
+        {/* In production mode without Supabase, block local fallback */}
+        {isProductionMode && !isSupabaseMode ? (
+          <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-900/50 space-y-3 text-xs">
+            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold">
+              <AlertCircle size={16} className="text-amber-600 flex-shrink-0" />
+              <span>Production Setup Required</span>
+            </div>
+            <p className="text-kai-muted dark:text-amber-100/90 leading-relaxed text-2xs">
+              To guarantee data privacy and enforce PostgreSQL Row Level Security, KAI requires Supabase Auth in production builds. Local demo authentication is disabled in production to prevent client-side bypasses.
+            </p>
+            <div className="p-3 rounded-xl bg-white dark:bg-kai-dark-card border border-amber-200 dark:border-amber-900/40 text-3xs font-mono text-kai-ink dark:text-white space-y-1">
+              <p className="font-bold text-kai-muted">Required Environment Variables:</p>
+              <p className="text-kai-vermilion">VITE_SUPABASE_URL=https://&lt;project&gt;.supabase.co</p>
+              <p className="text-kai-indigo">VITE_SUPABASE_ANON_KEY=eyJhbGciOi...</p>
+            </div>
+            <p className="text-3xs text-kai-muted">
+              Configure these variables in your hosting environment (e.g. Vercel, Netlify) or local .env file and reload.
             </p>
           </div>
-        )}
+        ) : (
+          <>
+            {/* Mode Selector for Supabase mode */}
+            {isSupabaseMode && (
+              <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-kai-dark-bg border border-kai-border/50 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signin');
+                    setErrorMsg(null);
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                    mode === 'signin'
+                      ? 'bg-white dark:bg-kai-dark-card text-kai-ink dark:text-white shadow-sm'
+                      : 'text-kai-muted'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setErrorMsg(null);
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                    mode === 'signup'
+                      ? 'bg-white dark:bg-kai-dark-card text-kai-ink dark:text-white shadow-sm'
+                      : 'text-kai-muted'
+                  }`}
+                >
+                  Register Account
+                </button>
+              </div>
+            )}
+
+            {/* Initial Setup Banner if not configured in demo mode */}
+            {!isSupabaseMode && !isOwnerConfigured && (
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                <span className="font-bold flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-amber-600" />
+                  <span>Local Demo Setup:</span>
+                </span>
+                <p className="text-2xs leading-relaxed opacity-90">
+                  Set a local demo password for development testing. In production, Supabase Auth is strictly required.
+                </p>
+              </div>
+            )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -268,6 +292,8 @@ export const AuthGateway: React.FC = () => {
             <ArrowRight size={14} />
           </button>
         </form>
+        </>
+        )}
 
         {/* Footer Info */}
         <div className="p-3 rounded-2xl bg-stone-50 dark:bg-kai-dark-bg border border-kai-border/70 text-3xs text-kai-muted text-center space-y-1">

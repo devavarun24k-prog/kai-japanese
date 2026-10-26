@@ -1,6 +1,8 @@
 -- ====================================================================
 -- PROJECT KAI — SUPABASE DATABASE MIGRATION WITH ROW LEVEL SECURITY
 -- ====================================================================
+-- Non-destructive schema: creates tables, indexes, triggers, storage bucket,
+-- and strict Row Level Security (RLS) policies for complete multi-tenant isolation.
 
 -- 1. Profiles Table
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -16,13 +18,34 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can only access their own profile" ON public.profiles;
 CREATE POLICY "Users can only access their own profile"
     ON public.profiles
     FOR ALL
-    USING (auth.uid() = id);
+    USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id);
+
+-- Trigger to auto-create user profile upon Supabase signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, email, display_name)
+    VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'display_name', 'Sensei Apprentice')
+    )
+    ON CONFLICT (id) DO NOTHING;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- 2. FSRS Spaced Repetition Cards Table
 CREATE TABLE IF NOT EXISTS public.fsrs_cards (
@@ -44,10 +67,12 @@ CREATE TABLE IF NOT EXISTS public.fsrs_cards (
 
 ALTER TABLE public.fsrs_cards ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can only access their own FSRS cards" ON public.fsrs_cards;
 CREATE POLICY "Users can only access their own FSRS cards"
     ON public.fsrs_cards
     FOR ALL
-    USING (auth.uid() = user_id);
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_fsrs_user_due ON public.fsrs_cards(user_id, due);
 
@@ -70,10 +95,12 @@ CREATE TABLE IF NOT EXISTS public.learning_attempts (
 
 ALTER TABLE public.learning_attempts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can only access their own learning attempts" ON public.learning_attempts;
 CREATE POLICY "Users can only access their own learning attempts"
     ON public.learning_attempts
     FOR ALL
-    USING (auth.uid() = user_id);
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_attempts_user_time ON public.learning_attempts(user_id, timestamp DESC);
 
@@ -97,7 +124,41 @@ CREATE TABLE IF NOT EXISTS public.mistake_records (
 
 ALTER TABLE public.mistake_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can only access their own mistake records" ON public.mistake_records;
 CREATE POLICY "Users can only access their own mistake records"
     ON public.mistake_records
     FOR ALL
-    USING (auth.uid() = user_id);
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- 5. Private Storage Bucket for Handwriting & Audio Evidence
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('kai-private-evidence', 'kai-private-evidence', false)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Users can only upload evidence to their own folder" ON storage.objects;
+CREATE POLICY "Users can only upload evidence to their own folder"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        bucket_id = 'kai-private-evidence' AND
+        (storage.foldername(name))[1] = auth.uid()::text
+    );
+
+DROP POLICY IF EXISTS "Users can only view their own evidence files" ON storage.objects;
+CREATE POLICY "Users can only view their own evidence files"
+    ON storage.objects FOR SELECT
+    TO authenticated
+    USING (
+        bucket_id = 'kai-private-evidence' AND
+        (storage.foldername(name))[1] = auth.uid()::text
+    );
+
+DROP POLICY IF EXISTS "Users can only delete their own evidence files" ON storage.objects;
+CREATE POLICY "Users can only delete their own evidence files"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (
+        bucket_id = 'kai-private-evidence' AND
+        (storage.foldername(name))[1] = auth.uid()::text
+    );

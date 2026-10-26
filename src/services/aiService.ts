@@ -1,10 +1,10 @@
 // src/services/aiService.ts
-// AI Tutor service with Gemini/OpenAI integration and intelligent deterministic pedagogical fallback
+// AI Tutor service with secure Supabase Edge Function proxy and built-in pedagogical fallback
 import { AIMessage, JLPTLevel, DisplayMode } from '../types';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface AITutorConfig {
-  provider: 'gemini' | 'openai' | 'builtin';
-  apiKey?: string;
+  provider: 'gemini' | 'builtin';
   level: JLPTLevel | 'Beginner';
   displayMode: DisplayMode;
 }
@@ -33,7 +33,12 @@ class AIService {
     try {
       const saved = localStorage.getItem('kai_ai_config');
       if (saved) {
-        this.config = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        this.config = {
+          provider: parsed.provider === 'gemini' ? 'gemini' : 'builtin',
+          level: parsed.level || 'Beginner',
+          displayMode: parsed.displayMode || 'bilingual'
+        };
       }
     } catch (e) {}
   }
@@ -41,7 +46,12 @@ class AIService {
   public saveConfig(config: Partial<AITutorConfig>) {
     this.config = { ...this.config, ...config };
     try {
-      localStorage.setItem('kai_ai_config', JSON.stringify(this.config));
+      // Store provider and level preferences only — NEVER store raw API keys in client storage
+      localStorage.setItem('kai_ai_config', JSON.stringify({
+        provider: this.config.provider,
+        level: this.config.level,
+        displayMode: this.config.displayMode
+      }));
     } catch (e) {}
   }
 
@@ -57,84 +67,51 @@ class AIService {
   ): Promise<AITutorResponse> {
     const query = userMessage.trim().toLowerCase();
 
-    // If Gemini API Key is configured in settings or environment
-    const envKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-    const activeKey = this.config.apiKey || envKey;
-
-    if (this.config.provider === 'gemini' && activeKey) {
+    // If Gemini provider is chosen and Supabase Edge Function is available
+    if (this.config.provider === 'gemini' && isSupabaseConfigured && supabase) {
       try {
-        const liveResponse = await this.callGeminiAPI(userMessage, activeKey, currentLevel);
-        return {
-          reply: liveResponse.reply,
-          teluguTranslation: liveResponse.teluguTranslation,
-          grammarBreakdown: liveResponse.grammarBreakdown,
-          suggestedReplies: liveResponse.suggestedReplies,
-          isRealAI: true,
-          providerUsed: 'Google Gemini 1.5 / 2.0 Flash'
-        };
+        const liveResponse = await this.callSecureEdgeFunction(userMessage, currentLevel);
+        if (liveResponse) {
+          return {
+            reply: liveResponse.reply,
+            teluguTranslation: liveResponse.teluguTranslation,
+            grammarBreakdown: liveResponse.grammarBreakdown,
+            suggestedReplies: liveResponse.suggestedReplies,
+            isRealAI: true,
+            providerUsed: 'Google Gemini 1.5 Flash (via Supabase Edge Function)'
+          };
+        }
       } catch (err) {
-        console.warn('Gemini API call failed, falling back to pedagogical engine:', err);
+        console.warn('Secure Edge Function unavailable or unconfigured, falling back to built-in pedagogical engine:', err);
       }
     }
 
-    // Built-in intelligent pedagogical engine
+    // Built-in intelligent pedagogical engine (100% offline, zero secret keys needed)
     return this.generatePedagogicalResponse(query, userMessage, currentLevel);
   }
 
-  // Real Gemini API caller
-  private async callGeminiAPI(prompt: string, apiKey: string, level: string): Promise<{
+  // Call Supabase Edge Function with authenticated user JWT
+  private async callSecureEdgeFunction(prompt: string, level: string): Promise<{
     reply: string;
     teluguTranslation?: string;
     grammarBreakdown?: { token: string; furigana?: string; pos: string; meaning: string }[];
     suggestedReplies?: string[];
-  }> {
-    const systemPrompt = `You are KAI (カイ), an elite, patient Japanese tutor for an English and Telugu speaker who is at "${level}" level.
-Requirements:
-1. Provide a direct, encouraging response in clear English.
-2. Provide natural Telugu (తెలుగు) translation and guidance where relevant.
-3. If Japanese sentences are included, provide Japanese script, Romaji, and Telugu phonetic pronunciation (e.g., కొరె వా).
-4. Return a structured JSON with:
-{
-  "reply": "English explanation with Japanese examples and Romaji",
-  "teluguTranslation": "తెలుగు వివరణ లేదా అనువాదం",
-  "grammarBreakdown": [{"token": "これ", "furigana": "これ", "pos": "Pronoun", "meaning": "This / ఇది"}],
-  "suggestedReplies": ["Suggested question 1", "Suggested question 2"]
-}`;
+  } | null> {
+    if (!supabase) return null;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: `${systemPrompt}\n\nLearner question: ${prompt}` }]
-            }
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.3
-          }
-        })
-      }
-    );
+    const { data, error } = await supabase.functions.invoke('kai-tutor', {
+      body: { prompt, level }
+    });
 
-    if (!res.ok) {
-      throw new Error(`Gemini API error: ${res.statusText}`);
+    if (error || !data) {
+      throw new Error(error?.message || 'Failed to invoke AI tutor edge function');
     }
 
-    const data = await res.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) throw new Error('No candidate content');
-
-    const parsed = JSON.parse(rawText);
     return {
-      reply: parsed.reply || rawText,
-      teluguTranslation: parsed.teluguTranslation,
-      grammarBreakdown: parsed.grammarBreakdown,
-      suggestedReplies: parsed.suggestedReplies
+      reply: data.reply,
+      teluguTranslation: data.teluguTranslation,
+      grammarBreakdown: data.grammarBreakdown,
+      suggestedReplies: data.suggestedReplies
     };
   }
 
