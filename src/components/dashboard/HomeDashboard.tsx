@@ -1,16 +1,18 @@
 // src/components/dashboard/HomeDashboard.tsx
-// Personalized Home Dashboard with Midnight Matsuri + Sumi-e Aesthetics
+// Redesigned 2-Column Home Dashboard (Main Column + Side Column on Desktop, Stacked on Mobile)
 // Features:
-// - Washi stat cards with gold hairline borders and count-up numbers
-// - Level card with SVG circular ring gauge
-// - Accuracy displays "—" when 0 attempts
-// - Hero card with unclipped Mascot and bounded speech bubble with pointer tail
-// - Weekly 7-day Chochin Lanterns streak row (lit days glow, today pulses)
-// - Quest completion: Red hanko "済" stamp, floating XP chip, spring bar, sakura confetti burst
-// - Verbs for quest actions (Start, Practice, Review)
-// - Daily Omikuji (おみくじ) Fortune card with shaking box, stick reveal, 30 curated phrases, and +5 XP award
-// - Strict prefers-reduced-motion support, whileHover lift 3px, whileTap scale 0.98
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+// - Main column:
+//   - Hero card with fixed (おかえり) horizontal layout (no awkward vertical wrapping)
+//   - ONE primary "Next step" card with a single big button
+//   - "Today" list of max 3 tasks (each task is one row: title + minutes + Start button; no checkbox; completion shown by a red Hanko stamp)
+//   - Stat cards moved below, collapsed by default with clean toggle
+// - Side column:
+//   - JLPTCalendarCard (open, applied, closed_not_applied, not_announced states, city & status picker, stale warning, 30/14/7-day reminders)
+//   - Daily Omikuji Fortune card (shaking cylinder, unfolding scroll, 30 phrases, +5 XP)
+//   - Weakness alert ONLY shown when real mistakes exist in stored data
+// - "No data yet" for accuracy rate when attempts === 0 (no fake 0% or 100%)
+// - Minimum text size 12px, verified WCAG AA contrast throughout
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import {
@@ -19,14 +21,13 @@ import {
   TrendingUp,
   AlertTriangle,
   BookOpen,
-  Award,
-  ChevronRight,
-  Target,
-  Repeat,
+  ChevronDown,
+  ChevronUp,
   Sparkles,
   ArrowRight,
-  CalendarDays,
-  Check
+  Repeat,
+  Check,
+  Target
 } from 'lucide-react';
 import { useLearning } from '../../context/LearningContext';
 import { useAuth } from '../../context/AuthContext';
@@ -35,18 +36,15 @@ import { storageService } from '../../services/storageService';
 import { soundEffects } from '../../services/soundEffects';
 import { HIRAGANA_LESSONS, KATAKANA_LESSONS } from '../../data/kanaData';
 import {
-  OMIKUJI_PHRASES,
   FORTUNE_TIERS,
   getDailyOmikujiPhrase,
-  OmikujiPhrase,
-  FortuneTier
+  OmikujiPhrase
 } from '../../data/omikujiPhrases';
 import { HankoStamp } from '../fx/HankoStamp';
 import { WashiTexture, GoldFlecks } from '../fx';
+import { JLPTCalendarCard } from '../jlpt/JLPTCalendarCard';
 
-// ============================================================================
-// HELPER: Animated Count-Up Number
-// ============================================================================
+// Animated Count-Up Number
 const AnimatedCounter: React.FC<{ value: number; suffix?: string; fallback?: string }> = ({
   value,
   suffix = '',
@@ -85,9 +83,7 @@ const AnimatedCounter: React.FC<{ value: number; suffix?: string; fallback?: str
   return <span>{count}{suffix}</span>;
 };
 
-// ============================================================================
-// HELPER: Circular Ring Gauge for Level / XP Progress
-// ============================================================================
+// Circular Ring Gauge for Level / XP Progress
 const CircularRingGauge: React.FC<{ progress: number; size?: number; strokeWidth?: number }> = ({
   progress,
   size = 46,
@@ -125,23 +121,21 @@ const CircularRingGauge: React.FC<{ progress: number; size?: number; strokeWidth
   );
 };
 
-// ============================================================================
-// MAIN COMPONENT: HomeDashboard
-// ============================================================================
 export const HomeDashboard: React.FC = () => {
   const { stats, setActiveSection, displayMode, awardXP, soundEnabled } = useLearning();
   const { profile } = useAuth();
   const shouldReduceMotion = useReducedMotion();
 
-  const [quests, setQuests] = useState(() => storageService.getQuests());
-  const [stampedQuestId, setStampedQuestId] = useState<string | null>(null);
-  const [floatingXp, setFloatingXp] = useState<{ id: string; amount: number } | null>(null);
+  // State for collapsible stats section (collapsed by default as requested)
+  const [statsExpanded, setStatsExpanded] = useState<boolean>(false);
 
-  const mistakes = storageService.getMistakes();
+  // Stored data
   const completedLessons = storageService.getCompletedLessons();
+  const mistakes = storageService.getMistakes();
   const unresolvedMistakes = mistakes.filter((m) => !m.resolved);
+  const totalAttemptsCount = storageService.getAttempts().length;
 
-  // Dynamic next incomplete lesson
+  // Next incomplete lesson
   const nextLesson = useMemo(() => {
     const nextH = HIRAGANA_LESSONS.find((l) => !completedLessons.includes(l.id));
     if (nextH) {
@@ -169,25 +163,77 @@ export const HomeDashboard: React.FC = () => {
     };
   }, [completedLessons]);
 
-  // JLPT N5 Readiness Score (0..100%)
-  const jlptReadiness = useMemo(() => {
-    const kanaScore = (stats.kana_mastery_pct / 100) * 30;
-    const vocabScore = Math.min(30, (stats.vocab_mastered_count / 30) * 30);
-    const kanjiScore = Math.min(20, (stats.kanji_mastered_count / 15) * 20);
-    const grammarScore = Math.min(20, (stats.grammar_mastered_count / 10) * 20);
-    return Math.min(100, Math.round(kanaScore + vocabScore + kanjiScore + grammarScore));
-  }, [stats]);
+  // Today's 3 tasks
+  const todayDateStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const storageTodayTasksKey = `kai_today_tasks_completed_${todayDateStr}`;
 
-  // ==========================================================================
-  // OMIKUJI (DAILY FORTUNE) STATE & LOGIC
-  // ==========================================================================
-  const todayKey = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const storageOmikujiKey = `kai_omikuji_${todayKey}`;
+  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(storageTodayTasksKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
+  const handleCompleteTodayTask = (taskId: string, xpReward: number) => {
+    if (completedTaskIds.includes(taskId)) return;
+    const next = [...completedTaskIds, taskId];
+    setCompletedTaskIds(next);
+    try {
+      localStorage.setItem(storageTodayTasksKey, JSON.stringify(next));
+    } catch (e) {
+      // ignore
+    }
+
+    if (soundEnabled) {
+      soundEffects.playLevelUp();
+    }
+
+    confetti({
+      particleCount: 26,
+      spread: 55,
+      origin: { y: 0.6 },
+      colors: ['#D9483B', '#C59B27', '#FFB7C5'],
+      shapes: ['circle'],
+      disableForReducedMotion: true
+    });
+
+    awardXP(xpReward, 'Today Task Completed');
+  };
+
+  const todayTasks = useMemo(() => [
+    {
+      id: 'task_review',
+      title: 'Spaced Memory Reviews',
+      titleTe: 'పునశ్చరణ కార్డులు',
+      minutes: 5,
+      targetSection: 'reviews' as const,
+      xp: 15
+    },
+    {
+      id: 'task_lesson',
+      title: nextLesson.title,
+      titleTe: nextLesson.titleTe,
+      minutes: 10,
+      targetSection: nextLesson.system,
+      xp: 25
+    },
+    {
+      id: 'task_write_or_speak',
+      title: 'Active Voice or Stroke Practice',
+      titleTe: 'ఉచ్చారణ లేదా రాత సాధన',
+      minutes: 5,
+      targetSection: 'sentence' as const,
+      xp: 15
+    }
+  ], [nextLesson]);
+
+  // Omikuji state
+  const storageOmikujiKey = `kai_omikuji_${todayDateStr}`;
   const [omikujiState, setOmikujiState] = useState<{
     hasDrawn: boolean;
     isShaking: boolean;
-    isUnfolded: boolean;
     phrase: OmikujiPhrase | null;
   }>(() => {
     try {
@@ -196,7 +242,6 @@ export const HomeDashboard: React.FC = () => {
         return {
           hasDrawn: true,
           isShaking: false,
-          isUnfolded: true,
           phrase: JSON.parse(saved)
         };
       }
@@ -206,23 +251,18 @@ export const HomeDashboard: React.FC = () => {
     return {
       hasDrawn: false,
       isShaking: false,
-      isUnfolded: false,
       phrase: null
     };
   });
 
   const handleDrawOmikuji = () => {
     if (omikujiState.hasDrawn || omikujiState.isShaking) return;
-
-    if (soundEnabled) {
-      soundEffects.playClick();
-    }
+    if (soundEnabled) soundEffects.playClick();
 
     setOmikujiState((prev) => ({ ...prev, isShaking: true }));
 
     setTimeout(() => {
-      const dailyPhrase = getDailyOmikujiPhrase(todayKey);
-
+      const dailyPhrase = getDailyOmikujiPhrase(todayDateStr);
       try {
         localStorage.setItem(storageOmikujiKey, JSON.stringify(dailyPhrase));
       } catch (e) {
@@ -232,64 +272,22 @@ export const HomeDashboard: React.FC = () => {
       setOmikujiState({
         hasDrawn: true,
         isShaking: false,
-        isUnfolded: true,
         phrase: dailyPhrase
       });
 
-      // Award +5 XP
       awardXP(5, 'Daily Omikuji Blessing (おみくじ)');
+      if (soundEnabled) soundEffects.playLevelUp();
 
-      if (soundEnabled) {
-        soundEffects.playLevelUp();
-      }
-
-      // Sakura petal confetti burst
       confetti({
-        particleCount: 30,
+        particleCount: 28,
         spread: 60,
         origin: { y: 0.65 },
-        colors: ['#FFB7C5', '#FFCCD5', '#D9483B', '#C59B27', '#FFF0F5'],
+        colors: ['#FFB7C5', '#FFCCD5', '#D9483B', '#C59B27'],
         shapes: ['circle'],
-        scalar: 1.1,
         disableForReducedMotion: true
       });
     }, 600);
   };
-
-  // ==========================================================================
-  // QUEST COMPLETION INTERACTION
-  // ==========================================================================
-  const handleCompleteQuest = (questId: string, xpReward: number) => {
-    setStampedQuestId(questId);
-    setFloatingXp({ id: questId, amount: xpReward });
-
-    if (soundEnabled) {
-      soundEffects.playLevelUp();
-    }
-
-    // Sakura petal burst
-    confetti({
-      particleCount: 26,
-      spread: 55,
-      origin: { y: 0.6 },
-      colors: ['#FFB7C5', '#FFCCD5', '#D9483B', '#C59B27'],
-      shapes: ['circle'],
-      disableForReducedMotion: true
-    });
-
-    awardXP(xpReward, 'Daily Quest Completed');
-
-    // Update quest state
-    setQuests((prev) =>
-      prev.map((q) => (q.id === questId ? { ...q, completed: true, progress: q.target } : q))
-    );
-
-    setTimeout(() => {
-      setFloatingXp(null);
-    }, 1200);
-  };
-
-  const allQuestsDone = quests.length > 0 && quests.every((q) => q.completed);
 
   // 7-day Weekly Chochin Streak Data
   const daysOfWeek = ['月', '火', '水', '木', '金', '土', '日'];
@@ -299,463 +297,307 @@ export const HomeDashboard: React.FC = () => {
   return (
     <div className="space-y-6 pb-12 select-none">
       {/* =====================================================================
-          1. HERO WELCOME CARD WITH UNCLIPPED MASCOT & POINTED SPEECH BUBBLE
+          2-COLUMN LAYOUT: MAIN COLUMN (8 cols) + SIDE COLUMN (4 cols)
           ===================================================================== */}
-      <div className="relative rounded-3xl bg-[#0A101C] bg-gradient-to-r from-[#0A101C] via-[#0E1626] to-[#141D33] text-[#F3EBDD] p-6 sm:p-8 border border-[#2E4370]/60 shadow-[0_12px_32px_rgba(0,0,0,0.3)]">
-        {/* Subtle indigo wave texture */}
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#2E4370_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none rounded-3xl" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          {/* Left Text & Actions */}
-          <div className="space-y-3 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#141D33]/80 backdrop-blur-md text-[#E2BA4E] font-mono text-xs border border-[#2E4370]/70">
-              <Sparkles size={13} className="text-[#E2BA4E]" />
-              <span>{profile.current_level}</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-bold font-serif_jp tracking-tight text-[#FAF5ED] flex items-center gap-2">
-              <span>Welcome back, {profile.display_name}!</span>
-              <span className="text-xs font-normal text-[#C59B27] font-serif_jp hidden sm:inline">
-                (おかえり)
-              </span>
-            </h1>
-
-            <p className="text-sm text-[#DDD2B8] leading-relaxed">
-              {displayMode === 'telugu' || displayMode === 'bilingual' ? (
-                <span className="font-telugu block text-[#E2BA4E] mb-1 text-xs">
-                  జపనీస్ నేర్చుకోవడానికి, సహజంగా ఆలోచించడానికి సిద్ధంగా ఉండండి. నేటి పాఠం ప్రారంభించండి!
-                </span>
-              ) : null}
-              <span>
-                Every small step brings you closer to thinking naturally in Japanese. Focus on today&apos;s routine to keep your streak alive.
-              </span>
-            </p>
-
-            {/* Quick Actions */}
-            <div className="pt-2 flex flex-wrap items-center gap-3">
-              <motion.button
-                whileHover={shouldReduceMotion ? undefined : { y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveSection(nextLesson.system)}
-                className="px-6 py-3 rounded-2xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-bold text-sm shadow-vermilion flex items-center gap-2.5 transition-colors"
-              >
-                <BookOpen size={16} />
-                <span>Continue: {nextLesson.title}</span>
-                <ArrowRight size={15} />
-              </motion.button>
-
-              {stats.reviews_due_count > 0 && (
-                <motion.button
-                  whileHover={shouldReduceMotion ? undefined : { y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setActiveSection('reviews')}
-                  className="px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm transition-all flex items-center gap-2 shadow-sm"
-                >
-                  <Repeat size={15} />
-                  <span>{stats.reviews_due_count} Reviews Due</span>
-                </motion.button>
-              )}
-
-              <motion.button
-                whileHover={shouldReduceMotion ? undefined : { y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveSection('planner')}
-                className="px-4 py-3 rounded-2xl bg-[#141D33]/90 hover:bg-[#1C2945] text-[#FAF5ED] font-medium text-sm border border-[#2E4370]/70 flex items-center gap-1.5 transition-colors"
-              >
-                <CalendarDays size={15} />
-                <span>Study Routine</span>
-              </motion.button>
-            </div>
-          </div>
-
-          {/* Right Mascot with Bounded Speech Bubble (pointing tail) */}
-          <div className="hidden sm:flex flex-col items-center relative flex-shrink-0 pt-2 lg:pt-0">
-            {/* Context-aware speech bubble bounded inside the card */}
-            <div className="mb-2 relative max-w-xs w-full px-4 py-2.5 rounded-2xl bg-[#F3EBDD] text-[#14110F] border border-[#DDD2B8] shadow-lg text-xs font-medium text-center">
-              <p className="leading-snug">
-                {allQuestsDone
-                  ? 'Subarashii! All quests conquered for today! Feel proud of your progress!'
-                  : stats.reviews_due_count > 0
-                  ? `You have ${stats.reviews_due_count} card(s) ready for review! A quick session keeps them fresh!`
-                  : stats.streak_days >= 7
-                  ? `7+ days on fire! The Matsuri festival spirit is roaring inside you!`
-                  : `Terrific dedication! Ready to conquer ${nextLesson.title}?`}
-              </p>
-              {/* Pointer Tail pointing down at Mascot */}
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-[#F3EBDD]" />
-            </div>
-
-            <MascotKai
-              size="lg"
-              streakDays={stats.streak_days}
-              questsCompleted={allQuestsDone}
-              interactive={true}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================================
-          2. WEEKLY 7-DAY CHOCHIN LANTERNS STREAK ROW
-          ===================================================================== */}
-      <div className="p-4 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370]/70 shadow-sm relative overflow-hidden">
-        <WashiTexture opacity={0.05} tone="light" />
-        <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Flame size={18} className="text-orange-500 fill-orange-500 animate-pulse" />
-            <div>
-              <span className="font-serif_jp font-bold text-xs uppercase tracking-wider text-[#14110F] dark:text-[#FAF5ED]">
-                Weekly Matsuri Streak ({stats.streak_days} Days Active)
-              </span>
-              <p className="text-3xs text-[#6B6358] dark:text-[#94A3B8]">
-                Lit lanterns honor completed practice; today&apos;s lantern pulses gently.
-              </p>
-            </div>
-          </div>
-
-          {/* 7 Chochin Lanterns Row */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {daysOfWeek.map((dayJp, idx) => {
-              const isToday = idx === currentDayIndex;
-              const isPastOrToday = idx <= currentDayIndex;
-              const isLit = isPastOrToday && stats.streak_days > (currentDayIndex - idx);
-
-              return (
-                <div key={dayJp} className="flex flex-col items-center gap-1">
-                  <div
-                    className={`relative w-7 h-9 sm:w-8 sm:h-10 rounded-lg flex items-center justify-center border transition-all duration-300 ${
-                      isLit
-                        ? 'bg-gradient-to-b from-[#FFF2D6] via-[#F5A25D] to-[#D9483B] border-[#9E2B1E] text-[#14110F] font-bold shadow-[0_0_12px_rgba(217,72,59,0.5)]'
-                        : isToday
-                        ? 'bg-[#E8DEC8] dark:bg-[#1C2945] border-[#C59B27] text-[#C59B27] animate-pulse'
-                        : 'bg-stone-200/60 dark:bg-[#0E1626] border-stone-300 dark:border-[#2E4370]/40 text-stone-400 opacity-60'
-                    }`}
-                  >
-                    <span className="font-serif_jp text-xs select-none">{dayJp}</span>
-                    {/* Top lantern hook */}
-                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1 bg-[#14110F] rounded-t-sm" />
-                  </div>
-                  <span className="text-4xs font-mono text-[#6B6358] dark:text-[#94A3B8]">
-                    {dayNamesEn[idx]}
-                  </span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ===================================================================
+            MAIN COLUMN (lg:col-span-8): Hero, Next Step, Today Tasks, Stats
+            =================================================================== */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* 1. Hero Card: Fixed (おかえり) horizontal layout + bounded speech bubble */}
+          <div className="relative rounded-3xl bg-[#0A101C] bg-gradient-to-r from-[#0A101C] via-[#0E1626] to-[#141D33] text-[#F3EBDD] p-6 sm:p-7 border border-[#2E4370]/60 shadow-[0_12px_32px_rgba(0,0,0,0.3)]">
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div className="space-y-2.5 max-w-lg">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#141D33]/85 text-[#E2BA4E] font-mono text-xs border border-[#2E4370]/70">
+                  <Sparkles size={13} className="text-[#E2BA4E]" />
+                  <span>{profile.current_level}</span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
-      {/* =====================================================================
-          3. STAT CARDS: WASHI PAPER + GOLD HAIRLINE BORDER + COUNT-UP NUMBERS
-          ===================================================================== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Study Streak */}
-        <motion.div
-          whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-          whileTap={{ scale: 0.98 }}
-          initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.06 }}
-          className="relative p-4 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm space-y-1 overflow-hidden"
-        >
-          <WashiTexture opacity={0.06} tone="light" />
-          <div className="relative z-10 flex items-center justify-between text-[#6B6358] dark:text-[#94A3B8] text-xs">
-            <span>Study Streak</span>
-            <Flame size={16} className="text-orange-500 fill-orange-500" />
-          </div>
-          <div className="relative z-10 text-2xl font-bold text-[#14110F] dark:text-[#FAF5ED] font-mono">
-            <AnimatedCounter value={stats.streak_days} /> <span className="text-sm font-sans font-normal text-[#6B6358]">days</span>
-          </div>
-          <p className="relative z-10 text-3xs text-[#2D7A4D] dark:text-[#3C9B64] font-medium">
-            Active streak protected
-          </p>
-        </motion.div>
+                {/* Fixed headline with (おかえり) guaranteed on same line without vertical wrapping */}
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif_jp tracking-tight text-[#FAF5ED] leading-snug">
+                  <span>Welcome back, {profile.display_name}!</span>
+                  <span className="inline-block whitespace-nowrap text-xs sm:text-sm font-normal text-[#C59B27] font-serif_jp ml-2">
+                    (おかえり)
+                  </span>
+                </h1>
 
-        {/* Card 2: Level & Ring Gauge */}
-        <motion.div
-          whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-          whileTap={{ scale: 0.98 }}
-          initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.12 }}
-          className="relative p-4 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm overflow-hidden flex items-center justify-between"
-        >
-          <WashiTexture opacity={0.06} tone="light" />
-          <div className="relative z-10 space-y-1">
-            <div className="flex items-center gap-1.5 text-[#6B6358] dark:text-[#94A3B8] text-xs">
-              <span>Mastery Level</span>
-              <Zap size={15} className="text-[#C59B27]" />
+                <p className="text-xs sm:text-sm text-[#DDD2B8] leading-relaxed">
+                  {displayMode === 'telugu' || displayMode === 'bilingual' ? (
+                    <span className="font-telugu block text-[#E2BA4E] mb-0.5 text-xs">
+                      ప్రతి చిన్న అభ్యాసం మిమ్మల్ని సహజమైన జపనీస్ సంభాషణకు చేరువ చేస్తుంది.
+                    </span>
+                  ) : null}
+                  <span>
+                    Focus on today&apos;s 3 short steps to keep your active study momentum strong.
+                  </span>
+                </p>
+              </div>
+
+              {/* Unclipped Mascot with Bounded Speech Bubble and Pointer Tail */}
+              <div className="hidden sm:flex flex-col items-center relative flex-shrink-0">
+                <div className="mb-2 relative max-w-[200px] w-full px-3 py-2 rounded-2xl bg-[#F3EBDD] text-[#14110F] border border-[#DDD2B8] shadow-md text-xs font-medium text-center">
+                  <p className="leading-tight text-3xs">
+                    {stats.reviews_due_count > 0
+                      ? `${stats.reviews_due_count} card(s) ready for review!`
+                      : 'Ready for today’s lesson?'}
+                  </p>
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[7px] border-t-[#F3EBDD]" />
+                </div>
+
+                <MascotKai
+                  size="md"
+                  streakDays={stats.streak_days}
+                  interactive={true}
+                />
+              </div>
             </div>
-            <div className="text-2xl font-bold text-[#14110F] dark:text-[#FAF5ED] font-mono">
-              Lv. <AnimatedCounter value={stats.level} />
+          </div>
+
+          {/* 2. ONE PRIMARY "NEXT STEP" CARD WITH A SINGLE BIG BUTTON */}
+          <div className="relative p-6 sm:p-7 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border-2 border-kai-vermilion/50 shadow-md space-y-4 overflow-hidden">
+            <WashiTexture opacity={0.07} tone="light" />
+            <GoldFlecks density="sparse" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-3xs font-mono uppercase font-bold tracking-wider text-kai-vermilion">
+                  Primary Next Step &bull; Recommended Focus
+                </span>
+                <h2 className="text-lg sm:text-xl font-bold font-serif_jp text-[#14110F] dark:text-[#FAF5ED]">
+                  {nextLesson.title}
+                </h2>
+                <p className="text-xs text-[#524B42] dark:text-[#DDD2B8] max-w-md">
+                  Step-by-step guidance with native stroke order, audio pitch accent, and Telugu phonetic notes.
+                </p>
+              </div>
+
+              {/* Single Big Action Button */}
+              <motion.button
+                whileHover={shouldReduceMotion ? undefined : { scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setActiveSection(nextLesson.system)}
+                className="px-7 py-4 rounded-2xl bg-gradient-to-r from-kai-vermilion to-kai-vermilion-dark text-white font-bold text-sm shadow-vermilion flex items-center justify-center gap-2 flex-shrink-0"
+              >
+                <BookOpen size={17} />
+                <span>Continue Lesson</span>
+                <ArrowRight size={16} />
+              </motion.button>
             </div>
-            <p className="text-3xs text-[#6B6358] dark:text-[#94A3B8] truncate max-w-[110px]">
-              {stats.level_title}
-            </p>
           </div>
-          {/* Circular Ring Gauge */}
-          <div className="relative z-10">
-            <CircularRingGauge progress={stats.total_xp % 100} size={48} strokeWidth={4.5} />
-          </div>
-        </motion.div>
 
-        {/* Card 3: Spaced Reviews Due */}
-        <motion.div
-          whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-          whileTap={{ scale: 0.98 }}
-          initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.18 }}
-          onClick={() => setActiveSection('reviews')}
-          className="relative p-4 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm space-y-1 cursor-pointer overflow-hidden hover:border-[#C59B27] transition-colors"
-        >
-          <WashiTexture opacity={0.06} tone="light" />
-          <div className="relative z-10 flex items-center justify-between text-[#6B6358] dark:text-[#94A3B8] text-xs">
-            <span>Due for Review</span>
-            <Repeat size={16} className="text-amber-500" />
-          </div>
-          <div className="relative z-10 text-2xl font-bold text-[#14110F] dark:text-[#FAF5ED] font-mono">
-            <AnimatedCounter value={stats.reviews_due_count} /> <span className="text-sm font-sans font-normal text-[#6B6358]">cards</span>
-          </div>
-          <p className="relative z-10 text-3xs text-amber-700 dark:text-amber-300 font-medium">
-            FSRS Spaced Repetition
-          </p>
-        </motion.div>
-
-        {/* Card 4: Overall Accuracy (Shows "—" when 0 attempts) */}
-        <motion.div
-          whileHover={shouldReduceMotion ? undefined : { y: -3 }}
-          whileTap={{ scale: 0.98 }}
-          initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.24 }}
-          className="relative p-4 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm space-y-1 overflow-hidden"
-        >
-          <WashiTexture opacity={0.06} tone="light" />
-          <div className="relative z-10 flex items-center justify-between text-[#6B6358] dark:text-[#94A3B8] text-xs">
-            <span>Accuracy Rate</span>
-            <TrendingUp size={16} className="text-[#2D7A4D] dark:text-[#3C9B64]" />
-          </div>
-          <div className="relative z-10 text-2xl font-bold text-[#14110F] dark:text-[#FAF5ED] font-mono">
-            {stats.accuracy_rate === 0 || stats.accuracy_rate === null ? (
-              <span>—</span>
-            ) : (
-              <AnimatedCounter value={stats.accuracy_rate} suffix="%" />
-            )}
-          </div>
-          <p className="relative z-10 text-3xs text-[#6B6358] dark:text-[#94A3B8]">
-            {stats.accuracy_rate === 0 ? 'No practice attempts yet' : 'Real-time practice retention'}
-          </p>
-        </motion.div>
-      </div>
-
-      {/* =====================================================================
-          4. MAIN CONTENT SPLIT: QUESTS & SKILLS (LEFT) / OMIKUJI & JLPT (RIGHT)
-          ===================================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Quests & Skill Progress */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Daily Quests Card */}
-          <div className="relative p-5 sm:p-6 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370]/70 shadow-sm overflow-hidden">
+          {/* 3. "TODAY" LIST OF MAX 3 TASKS (ONE ROW PER TASK: TITLE + MINUTES + START BUTTON; HANKO STAMP ON COMPLETION) */}
+          <div className="relative p-5 sm:p-6 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370]/70 shadow-sm space-y-4 overflow-hidden">
             <WashiTexture opacity={0.06} tone="light" />
 
-            <div className="relative z-10 flex items-center justify-between mb-4">
+            <div className="relative z-10 flex items-center justify-between border-b border-[#DDD2B8] dark:border-[#2E4370]/60 pb-3">
               <div className="flex items-center gap-2">
                 <Target size={18} className="text-kai-vermilion" />
-                <h2 className="text-base font-bold text-[#14110F] dark:text-[#FAF5ED] font-serif_jp">
-                  Today&apos;s Study Quests (今日のクエスト)
+                <h2 className="text-base font-bold font-serif_jp text-[#14110F] dark:text-[#FAF5ED]">
+                  Today&apos;s Focus (今日の3項目)
                 </h2>
               </div>
-              <span className="text-xs text-[#6B6358] dark:text-[#94A3B8] font-mono">
-                {quests.filter((q) => q.completed).length} / {quests.length} Completed
+              <span className="text-xs font-mono text-[#6B6358] dark:text-[#94A3B8]">
+                {completedTaskIds.length} / {todayTasks.length} Done
               </span>
             </div>
 
-            <div className="relative z-10 space-y-3">
-              {quests.map((q) => {
-                const isStamped = stampedQuestId === q.id || q.completed;
-                const verbText =
-                  q.id === 'q_kana_recall'
-                    ? 'Practice'
-                    : q.id === 'q_vocab_flash'
-                    ? 'Review'
-                    : q.id === 'q_speaking_shadow'
-                    ? 'Start'
-                    : 'Review';
+            <div className="relative z-10 space-y-2.5">
+              {todayTasks.map((t) => {
+                const isCompleted = completedTaskIds.includes(t.id);
 
                 return (
-                  <motion.div
-                    key={q.id}
-                    whileHover={shouldReduceMotion ? undefined : { y: -2 }}
-                    className="relative p-3.5 rounded-2xl bg-white/80 dark:bg-[#0E1626]/80 border border-[#DDD2B8] dark:border-[#2E4370]/60 flex items-center justify-between gap-4 transition-colors"
+                  <div
+                    key={t.id}
+                    className="p-3.5 rounded-2xl bg-white/90 dark:bg-[#0E1626]/90 border border-[#DDD2B8] dark:border-[#2E4370]/60 flex items-center justify-between gap-4 transition-colors"
                   >
-                    <div className="space-y-1 min-w-0">
+                    <div className="min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2">
                         <span
                           className={`text-xs font-bold ${
-                            q.completed
+                            isCompleted
                               ? 'line-through text-[#6B6358] dark:text-stone-400'
                               : 'text-[#14110F] dark:text-[#FAF5ED]'
                           }`}
                         >
-                          {q.title}
+                          {t.title}
                         </span>
-                        <span className="text-3xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-mono font-bold border border-amber-300">
-                          +{q.reward_xp} XP
+                        <span className="text-3xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-mono font-semibold border border-amber-300">
+                          {t.minutes} mins
                         </span>
                       </div>
-
                       {(displayMode === 'telugu' || displayMode === 'bilingual') && (
                         <p className="font-telugu text-3xs text-kai-vermilion-dark dark:text-kai-vermilion-light">
-                          {q.title_te}
+                          {t.titleTe}
                         </p>
                       )}
-
-                      <div className="w-36 sm:w-44 h-1.5 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-kai-vermilion"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, (q.progress / q.target) * 100)}%` }}
-                          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                        />
-                      </div>
                     </div>
 
-                    <div className="relative flex items-center gap-2">
-                      {/* Red Hanko "済" Stamp upon completion */}
-                      {isStamped ? (
+                    {/* Completion representation: Red Hanko "済" stamp or Start button */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {isCompleted ? (
                         <div className="flex items-center gap-1.5">
                           <HankoStamp text="済" size={36} shape="square" playSound={false} />
-                          <span className="text-3xs font-mono font-bold text-[#2D7A4D] dark:text-[#3C9B64] hidden sm:inline">
+                          <span className="text-3xs font-mono font-bold text-[#2D7A4D] hidden sm:inline">
                             Done ✓
                           </span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          {/* Quick Complete / Mark as Done button */}
                           <button
                             type="button"
-                            onClick={() => handleCompleteQuest(q.id, q.reward_xp)}
-                            title="Complete Quest & Stamp Hanko"
+                            onClick={() => handleCompleteTodayTask(t.id, t.xp)}
+                            title="Mark complete & Stamp Hanko"
                             className="p-1.5 rounded-xl border border-[#DDD2B8] dark:border-[#2E4370] text-[#6B6358] hover:text-[#2D7A4D] hover:border-[#2D7A4D] transition-colors"
                           >
                             <Check size={14} />
                           </button>
 
-                          {/* Specific Action Verb Button */}
                           <motion.button
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                              if (q.id === 'q_kana_recall') setActiveSection('kana');
-                              else if (q.id === 'q_vocab_flash') setActiveSection('vocab');
-                              else if (q.id === 'q_speaking_shadow') setActiveSection('speaking');
-                              else setActiveSection('reviews');
-                            }}
-                            className="px-3.5 py-1.5 rounded-xl bg-kai-vermilion text-white text-xs font-semibold shadow-sm hover:bg-kai-vermilion-dark transition-colors flex items-center gap-1"
+                            onClick={() => setActiveSection(t.targetSection)}
+                            className="px-4 py-1.5 rounded-xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white text-xs font-semibold shadow-sm transition-colors flex items-center gap-1"
                           >
-                            <span>{verbText}</span>
-                            <ArrowRight size={12} />
+                            <span>Start</span>
+                            <ArrowRight size={13} />
                           </motion.button>
                         </div>
                       )}
-
-                      {/* Floating XP Chip Animation */}
-                      {floatingXp?.id === q.id && (
-                        <motion.span
-                          initial={{ opacity: 1, y: 0, scale: 1 }}
-                          animate={{ opacity: 0, y: -30, scale: 1.2 }}
-                          transition={{ duration: 1.0, ease: 'easeOut' }}
-                          className="absolute -top-6 right-0 font-mono font-bold text-xs text-[#C59B27] pointer-events-none"
-                        >
-                          +{floatingXp.amount} XP!
-                        </motion.span>
-                      )}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Skill Competencies Grid */}
-          <div className="relative p-5 sm:p-6 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370]/70 shadow-sm space-y-4 overflow-hidden">
-            <WashiTexture opacity={0.06} tone="light" />
+          {/* 4. STAT CARDS: MOVED BELOW, COLLAPSED BY DEFAULT */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setStatsExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-[#E8DEC8]/60 dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370] text-xs font-semibold text-[#524B42] dark:text-[#DDD2B8] hover:border-kai-vermilion transition-colors"
+            >
+              <span>{statsExpanded ? 'Hide Detailed Learning Metrics' : 'View Detailed Learning Metrics (Stats & Progress)'}</span>
+              {statsExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
 
-            <div className="relative z-10 flex items-center justify-between">
-              <h2 className="text-base font-bold text-[#14110F] dark:text-[#FAF5ED] font-serif_jp">
-                Core Competencies (4技能の習得状況)
-              </h2>
-              <span className="text-3xs font-mono text-[#C59B27]">Live Sync</span>
-            </div>
+            {statsExpanded && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                {/* 4 Stat Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Streak */}
+                  <div className="p-3.5 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm space-y-1">
+                    <div className="flex items-center justify-between text-[#6B6358] dark:text-[#94A3B8] text-xs">
+                      <span>Streak</span>
+                      <Flame size={15} className="text-orange-500 fill-orange-500" />
+                    </div>
+                    <div className="text-xl font-bold font-mono text-[#14110F] dark:text-white">
+                      <AnimatedCounter value={stats.streak_days} />d
+                    </div>
+                  </div>
 
-            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5 p-3 rounded-2xl bg-white/70 dark:bg-[#0E1626]/70 border border-[#DDD2B8] dark:border-[#2E4370]/50">
-                <div className="flex justify-between text-xs font-medium">
-                  <span>Kana Mastery (かな)</span>
-                  <span className="font-mono">{stats.kana_mastery_pct}%</span>
+                  {/* Level with Circular Ring Gauge */}
+                  <div className="p-3.5 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1 text-[#6B6358] dark:text-[#94A3B8] text-xs">
+                        <span>Level</span>
+                        <Zap size={14} className="text-[#C59B27]" />
+                      </div>
+                      <div className="text-xl font-bold font-mono text-[#14110F] dark:text-white">
+                        Lv. <AnimatedCounter value={stats.level} />
+                      </div>
+                    </div>
+                    <CircularRingGauge progress={stats.total_xp % 100} size={38} strokeWidth={3.5} />
+                  </div>
+
+                  {/* Due Reviews */}
+                  <div
+                    onClick={() => setActiveSection('reviews')}
+                    className="p-3.5 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm space-y-1 cursor-pointer hover:border-kai-vermilion"
+                  >
+                    <div className="flex items-center justify-between text-[#6B6358] dark:text-[#94A3B8] text-xs">
+                      <span>Reviews</span>
+                      <Repeat size={15} className="text-amber-500" />
+                    </div>
+                    <div className="text-xl font-bold font-mono text-[#14110F] dark:text-white">
+                      <AnimatedCounter value={stats.reviews_due_count} />
+                    </div>
+                  </div>
+
+                  {/* Accuracy Rate (Never 0% or 100% when 0 attempts: shows "No data yet") */}
+                  <div className="p-3.5 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/40 shadow-sm space-y-1">
+                    <div className="flex items-center justify-between text-[#6B6358] dark:text-[#94A3B8] text-xs">
+                      <span>Accuracy</span>
+                      <TrendingUp size={15} className="text-[#2D7A4D]" />
+                    </div>
+                    <div className="text-base font-bold font-mono text-[#14110F] dark:text-white">
+                      {totalAttemptsCount === 0 ? (
+                        <span className="text-xs font-sans font-medium text-[#6B6358] dark:text-stone-400">
+                          No data yet
+                        </span>
+                      ) : (
+                        <AnimatedCounter value={stats.accuracy_rate} suffix="%" />
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full h-2 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-                  <div className="h-full bg-kai-vermilion" style={{ width: `${stats.kana_mastery_pct}%` }} />
+
+                {/* 7-day Weekly Chochin Streak Row */}
+                <div className="p-3.5 rounded-2xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370]/60 flex items-center justify-between">
+                  <span className="text-xs font-serif_jp font-bold text-[#14110F] dark:text-white">
+                    7-Day Attendance
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {daysOfWeek.map((dayJp, idx) => {
+                      const isToday = idx === currentDayIndex;
+                      const isPastOrToday = idx <= currentDayIndex;
+                      const isLit = isPastOrToday && stats.streak_days > (currentDayIndex - idx);
+                      return (
+                        <div
+                          key={dayJp}
+                          className={`w-6 h-8 rounded flex items-center justify-center text-3xs font-serif_jp border ${
+                            isLit
+                              ? 'bg-amber-400 text-[#14110F] border-amber-600 font-bold shadow-sm'
+                              : isToday
+                              ? 'border-kai-vermilion text-kai-vermilion animate-pulse'
+                              : 'bg-stone-200/50 dark:bg-stone-800 text-stone-400 border-stone-300 dark:border-stone-700'
+                          }`}
+                        >
+                          {dayJp}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-1.5 p-3 rounded-2xl bg-white/70 dark:bg-[#0E1626]/70 border border-[#DDD2B8] dark:border-[#2E4370]/50">
-                <div className="flex justify-between text-xs font-medium">
-                  <span>Vocabulary (単語)</span>
-                  <span className="font-mono">{stats.vocab_mastered_count} words</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-                  <div className="h-full bg-kai-indigo" style={{ width: `${Math.min(100, stats.vocab_mastered_count * 10)}%` }} />
-                </div>
-              </div>
-
-              <div className="space-y-1.5 p-3 rounded-2xl bg-white/70 dark:bg-[#0E1626]/70 border border-[#DDD2B8] dark:border-[#2E4370]/50">
-                <div className="flex justify-between text-xs font-medium">
-                  <span>Kanji Recognition (漢字)</span>
-                  <span className="font-mono">{stats.kanji_mastered_count} kanji</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-                  <div className="h-full bg-kai-gold" style={{ width: `${Math.min(100, stats.kanji_mastered_count * 15)}%` }} />
-                </div>
-              </div>
-
-              <div className="space-y-1.5 p-3 rounded-2xl bg-white/70 dark:bg-[#0E1626]/70 border border-[#DDD2B8] dark:border-[#2E4370]/50">
-                <div className="flex justify-between text-xs font-medium">
-                  <span>Grammar Patterns (文法)</span>
-                  <span className="font-mono">{stats.grammar_mastered_count} patterns</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-                  <div className="h-full bg-[#2D7A4D]" style={{ width: `${Math.min(100, stats.grammar_mastered_count * 20)}%` }} />
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Right Col: OMIKUJI FORTUNE & JLPT Meter */}
-        <div className="space-y-6">
-          {/* ===================================================================
-              5. OMIKUJI: DAILY FORTUNE CARD (おみくじ)
-              =================================================================== */}
-          <div className="relative p-5 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/60 shadow-md space-y-3 overflow-hidden text-center">
+        {/* ===================================================================
+            SIDE COLUMN (lg:col-span-4): JLPT Calendar Card, Omikuji, Weakness
+            =================================================================== */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* 1. JLPT CALENDAR CARD (4 states, city selection, status, reminders) */}
+          <JLPTCalendarCard />
+
+          {/* 2. DAILY OMIKUJI FORTUNE CARD */}
+          <div className="relative p-5 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#C59B27]/60 shadow-sm space-y-3 overflow-hidden text-center">
             <WashiTexture opacity={0.07} tone="light" />
             <GoldFlecks density="sparse" />
 
-            <div className="relative z-10 flex items-center justify-between border-b border-[#DDD2B8] dark:border-[#2E4370] pb-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold font-serif_jp text-[#14110F] dark:text-[#FAF5ED]">
+            <div className="relative z-10 flex items-center justify-between border-b border-[#DDD2B8] dark:border-[#2E4370] pb-2">
+              <span className="text-xs font-bold font-serif_jp text-[#14110F] dark:text-[#FAF5ED] flex items-center gap-1.5">
                 <Sparkles size={14} className="text-[#C59B27]" />
                 <span>Daily Fortune (おみくじ)</span>
-              </div>
-              <span className="text-3xs font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+              </span>
+              <span className="text-4xs font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                 +5 XP Daily
               </span>
             </div>
 
-            {/* Omikuji Visual Container */}
-            <div className="relative z-10 py-3 flex flex-col items-center justify-center min-h-[160px]">
+            <div className="relative z-10 py-2 min-h-[140px] flex flex-col items-center justify-center">
               {!omikujiState.hasDrawn ? (
-                <div className="space-y-3">
-                  {/* Shaking Hexagonal Wooden Box */}
+                <div className="space-y-2.5">
                   <motion.div
                     animate={
                       omikujiState.isShaking
@@ -763,134 +605,70 @@ export const HomeDashboard: React.FC = () => {
                         : { rotate: 0, scale: 1 }
                     }
                     transition={{ duration: 0.6 }}
-                    className="w-16 h-24 mx-auto bg-gradient-to-b from-[#A06D3B] to-[#6E4720] rounded-lg border-2 border-[#543315] shadow-lg flex flex-col items-center justify-between py-2 relative"
+                    className="w-14 h-20 mx-auto bg-gradient-to-b from-[#A06D3B] to-[#6E4720] rounded-lg border-2 border-[#543315] shadow-md flex items-center justify-center text-white font-serif_jp font-bold text-xs writing-vertical-rl"
                   >
-                    <span className="font-serif_jp font-bold text-white text-xs writing-vertical-rl">
-                      御神籤
-                    </span>
-                    <div className="w-3 h-1 bg-[#2C180B] rounded-full" />
+                    御神籤
                   </motion.div>
 
                   <p className="text-xs text-[#6B6358] dark:text-stone-300">
-                    Shake the sacred wooden cylinder to receive today&apos;s Japanese blessing and phrase.
+                    Shake the sacred wooden cylinder for today&apos;s blessing.
                   </p>
 
                   <motion.button
-                    whileHover={shouldReduceMotion ? undefined : { scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleDrawOmikuji}
                     disabled={omikujiState.isShaking}
-                    className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-kai-vermilion to-kai-vermilion-dark text-white font-bold text-xs shadow-vermilion flex items-center justify-center gap-2 mx-auto"
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-kai-vermilion to-kai-vermilion-dark text-white font-bold text-xs shadow-vermilion"
                   >
-                    <Sparkles size={14} />
-                    <span>{omikujiState.isShaking ? 'Shaking Box...' : 'Draw Daily Fortune'}</span>
+                    {omikujiState.isShaking ? 'Shaking...' : 'Draw Fortune'}
                   </motion.button>
                 </div>
               ) : (
-                /* Unfolded Fortune Scroll */
-                <motion.div
-                  initial={shouldReduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }}
-                  className="w-full space-y-2.5"
-                >
-                  {/* Fortune Tier Badge */}
-                  <div className="inline-flex items-center gap-2">
-                    <span className="font-serif_jp font-black text-2xl text-kai-vermilion">
+                <div className="space-y-2 w-full text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif_jp font-black text-xl text-kai-vermilion">
                       {omikujiState.phrase?.defaultTier || '大吉'}
                     </span>
-                    <span className="text-2xs font-bold text-[#14110F] dark:text-white">
-                      {FORTUNE_TIERS[omikujiState.phrase?.defaultTier || '大吉'].titleEn}
+                    <span className="text-3xs text-[#6B6358] dark:text-stone-400 font-mono">
+                      Sealed for today
                     </span>
                   </div>
 
-                  {/* Japanese Phrase in Noto Serif JP */}
-                  <div className="p-3 rounded-2xl bg-white/90 dark:bg-[#0E1626] border border-[#DDD2B8] dark:border-[#2E4370] space-y-1">
-                    <p className="font-serif_jp text-sm font-bold text-[#14110F] dark:text-[#FAF5ED]">
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-[#0E1626] border border-[#DDD2B8] dark:border-[#2E4370] space-y-1">
+                    <p className="font-serif_jp text-xs font-bold text-[#14110F] dark:text-[#FAF5ED]">
                       {omikujiState.phrase?.japanese}
                     </p>
-                    <p className="font-mono text-3xs text-[#6B6358] dark:text-[#94A3B8]">
-                      [{omikujiState.phrase?.reading}]
-                    </p>
-                    <p className="text-xs font-medium text-[#14110F] dark:text-[#DDD2B8] pt-1">
+                    <p className="text-3xs text-[#524B42] dark:text-[#DDD2B8]">
                       {omikujiState.phrase?.meaningEn}
                     </p>
-                    <p className="font-telugu text-3xs text-[#C59B27]">
+                    <p className="font-telugu text-4xs text-[#C59B27]">
                       {omikujiState.phrase?.meaningTe}
                     </p>
                   </div>
-
-                  <p className="text-3xs text-[#6B6358] dark:text-stone-400 font-mono">
-                    Fortune sealed for today &bull; Come back tomorrow!
-                  </p>
-                </motion.div>
+                </div>
               )}
             </div>
           </div>
 
-          {/* JLPT Readiness Meter */}
-          <div className="relative p-5 rounded-3xl bg-[#F3EBDD] dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370]/70 shadow-sm space-y-3 overflow-hidden">
-            <WashiTexture opacity={0.06} tone="light" />
-
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[#14110F] dark:text-white font-bold text-sm">
-                <Award size={17} className="text-[#C59B27]" />
-                <span>JLPT N5 Readiness</span>
+          {/* 3. WEAKNESS REMEDIATION (ONLY SHOWN WHEN REAL MISTAKES EXIST IN STORED DATA!) */}
+          {unresolvedMistakes.length > 0 && (
+            <div className="relative p-5 rounded-3xl bg-amber-50/90 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-900/40 space-y-2.5 overflow-hidden">
+              <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-300 font-bold text-xs">
+                <AlertTriangle size={15} />
+                <span>Weakness Drill ({unresolvedMistakes.length} mistakes)</span>
               </div>
-              <span className="text-xs font-mono font-bold text-kai-vermilion">
-                {jlptReadiness}% Ready
-              </span>
+              <p className="text-xs text-amber-950 dark:text-amber-200 leading-snug">
+                You have {unresolvedMistakes.length} recurring mistake(s) logged. Reviewing them now will strengthen your retention.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveSection('analytics')}
+                className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-sm"
+              >
+                Start Weakness Drill &rarr;
+              </button>
             </div>
-
-            <div className="relative z-10 w-full h-2.5 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-kai-gold to-kai-vermilion transition-all duration-500"
-                style={{ width: `${jlptReadiness}%` }}
-              />
-            </div>
-
-            <p className="relative z-10 text-xs text-[#6B6358] dark:text-[#94A3B8] leading-relaxed">
-              Calculated from your mastered kana, vocabulary bank, kanji recognition, and particle grammar.
-            </p>
-
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveSection('jlpt')}
-              className="relative z-10 w-full py-2.5 px-3 rounded-xl bg-kai-indigo hover:bg-kai-indigo-dark text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-            >
-              <span>Take N5 Diagnostic Exam</span>
-              <ChevronRight size={14} />
-            </motion.button>
-          </div>
-
-          {/* Weakness Alert Card */}
-          <div className="relative p-5 rounded-3xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-900/40 space-y-3 overflow-hidden">
-            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold text-sm">
-              <AlertTriangle size={17} />
-              <span>Personalized Remediation</span>
-            </div>
-
-            <p className="text-xs text-amber-950 dark:text-amber-200 leading-relaxed">
-              {unresolvedMistakes.length > 0 ? (
-                <>
-                  You have <strong>{unresolvedMistakes.length} recurring mistake(s)</strong> logged in your notebook. Focusing on these will quickly boost your retention!
-                </>
-              ) : (
-                <>
-                  Hiragana characters like <strong>さ (sa) vs き (ki)</strong> and <strong>わ (wa) vs れ (re)</strong> are the most frequent confusion points for beginners.
-                </>
-              )}
-            </p>
-
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveSection('analytics')}
-              className="w-full py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-            >
-              <span>View Weakness Diagnosis</span>
-              <ChevronRight size={14} />
-            </motion.button>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -97,7 +97,7 @@ export const StudyPlanner: React.FC = () => {
     };
   }, [completedLessons]);
 
-  const durations = [15, 30, 45];
+  const durations = [10, 15, 20, 30, 45];
 
   const handleSetDuration = (min: number) => {
     setTargetMinutes(min);
@@ -154,17 +154,15 @@ export const StudyPlanner: React.FC = () => {
       tag: 'Production'
     });
 
-    // Task 4: Targeted Weakness Practice (if 30+ min plan or if user has mistakes)
-    if (targetMinutes >= 30 || mistakes.length > 0) {
+    // Task 4: Targeted Weakness Practice (strictly only when real mistakes exist in stored data)
+    if (mistakes.length > 0) {
       const topMistake = mistakes[0];
       tasks.push({
         id: 'task_weakness_remediation',
-        title: topMistake ? `Weakness Drill: ${topMistake.prompt}` : 'Weakness Notebook Review',
+        title: `Weakness Drill: ${topMistake.prompt}`,
         titleTe: 'పొరపాట్లు సరిచేసుకునే ప్రత్యేక సాధన',
         durationMinutes: 5,
-        description: topMistake
-          ? `Reinforce "${topMistake.correct_answer}" to resolve recurring error: ${topMistake.notes_en}`
-          : 'Audit recent attempt logs and test yourself on past mistakes.',
+        description: `Reinforce "${topMistake.correct_answer}" to resolve recurring error: ${topMistake.notes_en}`,
         section: 'analytics',
         icon: '🎯',
         tag: 'Remediation'
@@ -289,15 +287,15 @@ export const StudyPlanner: React.FC = () => {
           <span className="font-mono text-xs text-kai-muted">{targetMinutes} minutes/day</span>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           {durations.map((d) => (
             <button
               key={d}
               onClick={() => handleSetDuration(d)}
-              className={`p-3.5 rounded-2xl border text-center font-bold text-sm transition-all ${
+              className={`py-3 px-2 rounded-2xl border text-center font-bold text-xs sm:text-sm transition-all ${
                 targetMinutes === d
-                  ? 'bg-kai-indigo text-white border-kai-indigo shadow-sm scale-105'
-                  : 'bg-stone-50 dark:bg-kai-dark-bg/60 border-kai-border text-kai-muted hover:text-kai-ink'
+                  ? 'bg-kai-vermilion text-white border-kai-vermilion shadow-md ring-2 ring-kai-vermilion/30 scale-[1.02]'
+                  : 'bg-stone-50 dark:bg-kai-dark-bg/60 border-kai-border text-kai-muted hover:text-kai-ink hover:border-kai-vermilion/40'
               }`}
             >
               {d} Minutes
