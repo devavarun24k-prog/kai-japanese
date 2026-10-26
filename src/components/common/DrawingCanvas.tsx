@@ -11,6 +11,7 @@ interface DrawingCanvasProps {
   height?: number;
   guideCharacter?: string;
   showGuide?: boolean;
+  ghostGuide?: boolean;
 }
 
 interface Point {
@@ -23,7 +24,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   width = 280,
   height = 280,
   guideCharacter,
-  showGuide: initialShowGuide = true
+  showGuide: initialShowGuide = true,
+  ghostGuide = false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
@@ -82,11 +84,26 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
     // 2. Draw Faint Guide Character if enabled
     if (guideCharacter && renderGuide) {
-      ctx.fillStyle = 'rgba(217, 72, 59, 0.14)'; // Soft Vermilion watermark
-      ctx.font = `${Math.floor(height * 0.65)}px "Noto Sans JP", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(guideCharacter, width / 2, height / 2 + 6);
+      if (ghostGuide) {
+        // Ghost trace mode: delicate dashed outline with faint carbon fill
+        ctx.save();
+        ctx.font = `${Math.floor(height * 0.65)}px "Noto Sans JP", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(26, 24, 23, 0.08)';
+        ctx.fillText(guideCharacter, width / 2, height / 2 + 6);
+        ctx.strokeStyle = 'rgba(217, 72, 59, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        ctx.strokeText(guideCharacter, width / 2, height / 2 + 6);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = 'rgba(217, 72, 59, 0.14)'; // Soft Vermilion watermark
+        ctx.font = `${Math.floor(height * 0.65)}px "Noto Sans JP", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(guideCharacter, width / 2, height / 2 + 6);
+      }
     }
 
     // 3. Draw Recorded Strokes with traditional sumi-e calligraphy brush feel

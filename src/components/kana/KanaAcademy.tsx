@@ -16,13 +16,20 @@ import {
   Award,
   ChevronRight,
   Trophy,
-  Edit3
+  Edit3,
+  Printer,
+  GitCompare,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import * as wanakana from 'wanakana';
 import { HIRAGANA_DATA, KATAKANA_DATA, HIRAGANA_LESSONS, KATAKANA_LESSONS } from '../../data/kanaData';
 import { KanaItem, KanaLesson } from '../../types';
 import { AudioButton } from '../common/AudioButton';
 import { DrawingCanvas } from '../common/DrawingCanvas';
+import { KanaStrokeAnimator } from './KanaStrokeAnimator';
+import { KANA_LOOKALIKE_PAIRS, KanaLookalikePair } from '../../data/kanaLookalikes';
+import { openPrintableGenkouYoushi } from '../../utils/genkouYoushiGenerator';
 import { useLearning } from '../../context/LearningContext';
 import { soundEffects } from '../../services/soundEffects';
 import { storageService } from '../../services/storageService';
@@ -34,17 +41,20 @@ export const KanaAcademy: React.FC = () => {
   const [selectedScript, setSelectedScript] = useState<'hiragana' | 'katakana'>('hiragana');
   const currentDataset = selectedScript === 'hiragana' ? HIRAGANA_DATA : KATAKANA_DATA;
 
-  // Active view tab
-  const [activeTab, setActiveTab] = useState<'lessons' | 'grid' | 'practice' | 'quiz'>('lessons');
+  // Active view tab (including Lookalikes)
+  const [activeTab, setActiveTab] = useState<'lessons' | 'grid' | 'practice' | 'lookalikes' | 'quiz'>('lessons');
   const [selectedKana, setSelectedKana] = useState<KanaItem>(HIRAGANA_DATA[0]);
+
+  // Stroke order animation modal inspector
+  const [animatingKana, setAnimatingKana] = useState<KanaItem | null>(null);
 
   // Grid row filtering
   const [activeGroup, setActiveGroup] = useState<
     'all' | 'a' | 'ka' | 'sa' | 'ta' | 'na' | 'ha' | 'ma' | 'ya' | 'ra' | 'wa'
   >('all');
 
-  // Handwriting Practice state
-  const [practiceMode, setPracticeMode] = useState<'trace' | 'freehand'>('trace');
+  // Handwriting Practice state with Ghost Trace support
+  const [practiceMode, setPracticeMode] = useState<'ghost' | 'trace' | 'freehand'>('ghost');
   const [isTracingComplete, setIsTracingComplete] = useState<boolean>(false);
 
   // --- Beginner Lessons State ---
@@ -371,11 +381,11 @@ export const KanaAcademy: React.FC = () => {
           </p>
         </div>
 
-        {/* View Switcher: Lessons, Grid, Handwriting Practice, Timed Quiz */}
-        <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-kai-dark-card border border-kai-border/50 text-xs font-semibold">
+        {/* View Switcher: Lessons, Grid, Handwriting Practice, Lookalikes, Timed Quiz */}
+        <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-kai-dark-card border border-kai-border/50 text-xs font-semibold overflow-x-auto">
           <button
             onClick={() => setActiveTab('lessons')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'lessons'
                 ? 'bg-white dark:bg-kai-dark-surface text-kai-ink dark:text-white shadow-sm'
                 : 'text-kai-muted hover:text-kai-ink'
@@ -386,7 +396,7 @@ export const KanaAcademy: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('grid')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
               activeTab === 'grid'
                 ? 'bg-white dark:bg-kai-dark-surface text-kai-ink dark:text-white shadow-sm'
                 : 'text-kai-muted hover:text-kai-ink'
@@ -396,7 +406,7 @@ export const KanaAcademy: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('practice')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
               activeTab === 'practice'
                 ? 'bg-white dark:bg-kai-dark-surface text-kai-ink dark:text-white shadow-sm'
                 : 'text-kai-muted hover:text-kai-ink'
@@ -405,8 +415,19 @@ export const KanaAcademy: React.FC = () => {
             Tracing
           </button>
           <button
+            onClick={() => setActiveTab('lookalikes')}
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'lookalikes'
+                ? 'bg-white dark:bg-kai-dark-surface text-kai-ink dark:text-white shadow-sm'
+                : 'text-kai-muted hover:text-kai-ink'
+            }`}
+          >
+            <GitCompare size={13} className="text-kai-gold" />
+            <span>Lookalikes</span>
+          </button>
+          <button
             onClick={() => setActiveTab('quiz')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
               activeTab === 'quiz'
                 ? 'bg-white dark:bg-kai-dark-surface text-kai-ink dark:text-white shadow-sm'
                 : 'text-kai-muted hover:text-kai-ink'
@@ -538,15 +559,31 @@ export const KanaAcademy: React.FC = () => {
           {/* STAGE A: LEARN FIRST */}
           {lessonStage === 'learn' && (
             <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/60 text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
-                <p>
-                  <strong>Lesson Guidance:</strong> {activeLesson.summaryEn}
-                </p>
-                {(displayMode === 'telugu' || displayMode === 'bilingual') && (
-                  <p className="font-telugu mt-1 text-2xs text-amber-950 dark:text-amber-100">
-                    {activeLesson.summaryTe}
+              <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+                <div>
+                  <p>
+                    <strong>Lesson Guidance:</strong> {activeLesson.summaryEn}
                   </p>
-                )}
+                  {(displayMode === 'telugu' || displayMode === 'bilingual') && (
+                    <p className="font-telugu mt-1 text-2xs text-amber-950 dark:text-amber-100">
+                      {activeLesson.summaryTe}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const chars = activeLesson.characterIds
+                      .map((id) => currentDataset.find((k) => k.id === id))
+                      .filter((k): k is KanaItem => Boolean(k));
+                    openPrintableGenkouYoushi(`Lesson ${activeLesson.lessonNumber}: ${activeLesson.title}`, chars);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-2xs flex items-center gap-1.5 shadow-sm transition-all shrink-0 self-start sm:self-auto"
+                >
+                  <Printer size={13} />
+                  <span>Print Genkō Yōshi Sheet (原稿用紙)</span>
+                </button>
               </div>
 
               {/* Characters Taught in this Lesson */}
@@ -581,15 +618,23 @@ export const KanaAcademy: React.FC = () => {
                         {item.mnemonic_en}
                       </p>
 
-                      <div className="pt-2 border-t border-kai-border/50 w-full flex items-center justify-center gap-2">
+                      <div className="pt-2 border-t border-kai-border/50 w-full flex items-center justify-center gap-1.5 flex-wrap">
                         <AudioButton text={item.character} size="sm" />
+                        <button
+                          type="button"
+                          onClick={() => setAnimatingKana(item)}
+                          className="px-2 py-1 rounded-lg bg-kai-indigo/10 text-kai-indigo dark:text-indigo-300 hover:bg-kai-indigo hover:text-white text-3xs font-semibold transition-colors"
+                          title="Watch stroke-by-stroke animation"
+                        >
+                          Strokes
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
                             setSelectedKana(item);
                             setActiveTab('practice');
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 text-3xs font-semibold text-kai-ink dark:text-white"
+                          className="px-2 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 text-3xs font-semibold text-kai-ink dark:text-white transition-colors"
                         >
                           Trace
                         </button>
@@ -598,6 +643,51 @@ export const KanaAcademy: React.FC = () => {
                   );
                 })}
               </div>
+
+              {/* Confusable Lookalikes Detected in this Lesson */}
+              {(() => {
+                const lessonChars = activeLesson.characterIds
+                  .map((id) => currentDataset.find((k) => k.id === id)?.character)
+                  .filter(Boolean) as string[];
+                const matchedPairs = KANA_LOOKALIKE_PAIRS.filter(
+                  (p) => p.script === selectedScript && p.characters.some((c) => lessonChars.includes(c))
+                );
+
+                if (matchedPairs.length === 0) return null;
+
+                return (
+                  <div className="p-5 rounded-3xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-300/60 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={17} className="text-amber-600" />
+                      <h4 className="font-bold text-xs font-serif_jp text-amber-950 dark:text-amber-200">
+                        Common Confusions in this Lesson: Pay Attention to Lookalikes!
+                      </h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {matchedPairs.map((pair) => (
+                        <div
+                          key={pair.id}
+                          className="p-3.5 rounded-2xl bg-white dark:bg-kai-dark-card border border-kai-border space-y-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-kai-ink dark:text-white">{pair.title}</span>
+                            <span className="text-3xs font-mono text-kai-vermilion font-bold">Watch Out</span>
+                          </div>
+                          <p className="text-2xs text-kai-muted leading-relaxed">
+                            {pair.keyDistinctionEn}
+                          </p>
+                          {(displayMode === 'telugu' || displayMode === 'bilingual') && (
+                            <p className="font-telugu text-2xs text-kai-vermilion">
+                              {pair.keyDistinctionTe}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Action to proceed to practice */}
               <div className="flex justify-end pt-2">
@@ -1079,103 +1169,269 @@ export const KanaAcademy: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 3: HANDWRITING & TRACING STUDIO                                      */}
+      {/* MODE 3: HANDWRITING & TRACING STUDIO WITH NUMBERED STROKES & GHOST CANVAS */}
       {/* ========================================================================= */}
       {activeTab === 'practice' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start max-w-4xl mx-auto">
-          <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi flex flex-col items-center gap-4">
-            <div className="flex items-center justify-between w-full">
-              <div className="space-y-0.5">
-                <span className="text-2xs font-mono text-kai-muted uppercase">Guided Writing</span>
-                <h3 className="text-base font-bold text-kai-ink dark:text-kai-dark-ink font-serif_jp">
-                  Trace & Write: {selectedKana.character}
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {/* Top Bar with Print Sheet & Character Selector */}
+          <div className="p-4 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border shadow-washi flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-kai-border flex items-center justify-center font-japanese text-2xl font-bold text-kai-ink dark:text-white">
+                {selectedKana.character}
+              </div>
+              <div>
+                <h3 className="font-bold text-sm font-serif_jp text-kai-ink dark:text-white">
+                  Tracing Studio: {selectedKana.character} ({selectedKana.romaji} • {selectedKana.telugu_phonetic})
                 </h3>
-              </div>
-
-              <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-semibold">
-                <button
-                  onClick={() => setPracticeMode('trace')}
-                  className={`px-2.5 py-1 rounded-lg transition-colors ${
-                    practiceMode === 'trace'
-                      ? 'bg-white dark:bg-kai-dark-card shadow-sm text-kai-ink'
-                      : 'text-kai-muted'
-                  }`}
-                >
-                  Trace Guide
-                </button>
-                <button
-                  onClick={() => setPracticeMode('freehand')}
-                  className={`px-2.5 py-1 rounded-lg transition-colors ${
-                    practiceMode === 'freehand'
-                      ? 'bg-white dark:bg-kai-dark-card shadow-sm text-kai-ink'
-                      : 'text-kai-muted'
-                  }`}
-                >
-                  Freehand
-                </button>
-              </div>
-            </div>
-
-            <DrawingCanvas
-              width={260}
-              height={260}
-              guideCharacter={selectedKana.character}
-              showGuide={practiceMode === 'trace'}
-              onStrokeComplete={handleStrokeComplete}
-            />
-
-            {isTracingComplete && (
-              <div className="w-full p-3 rounded-2xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 flex items-center justify-between text-xs animate-in zoom-in-95">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={16} />
-                  <span className="font-bold">Stroke target reached! (+10 XP)</span>
-                </div>
-                <button
-                  onClick={() => setIsTracingComplete(false)}
-                  className="font-semibold underline text-2xs"
-                >
-                  Try Again
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi space-y-4">
-            <h3 className="text-base font-bold text-kai-ink dark:text-kai-dark-ink font-serif_jp flex items-center gap-2">
-              <Layers size={17} className="text-kai-vermilion" />
-              <span>Stroke Order Breakdown (筆順)</span>
-            </h3>
-
-            <p className="text-xs text-kai-muted leading-relaxed">
-              Proper stroke order maintains character balance and prepares you for natural handwriting.
-            </p>
-
-            <div className="space-y-3">
-              {selectedKana.stroke_directions &&
-                selectedKana.stroke_directions.map((dir, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-xl bg-kai-bg/70 dark:bg-kai-dark-bg/60 border border-kai-border/50 flex items-center gap-3 text-xs"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-kai-vermilion text-white flex items-center justify-center font-mono font-bold text-2xs flex-shrink-0">
-                      {idx + 1}
-                    </div>
-                    <span className="text-kai-ink dark:text-kai-dark-ink font-medium">{dir}</span>
-                  </div>
-                ))}
-            </div>
-
-            {selectedKana.common_mistakes && selectedKana.common_mistakes.length > 0 && (
-              <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/60 text-xs space-y-1.5">
-                <span className="font-bold text-amber-900 dark:text-amber-300">
-                  ⚠️ Confusable Characters:
-                </span>
-                <p className="text-2xs text-amber-900/80 dark:text-amber-200/80">
-                  Do not confuse <strong>{selectedKana.character}</strong> with{' '}
-                  <strong>{selectedKana.common_mistakes.join(', ')}</strong>. Pay close attention to loop direction and stroke counts.
+                <p className="text-2xs text-kai-muted font-mono">
+                  {selectedKana.stroke_count} strokes • Traditional Genkō Yōshi practice
                 </p>
               </div>
-            )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => openPrintableGenkouYoushi(`${selectedKana.character} (${selectedKana.romaji}) Practice`, [selectedKana])}
+              className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 border border-kai-border text-kai-ink dark:text-white font-bold text-2xs flex items-center gap-1.5 transition-all shadow-xs self-start sm:self-auto"
+            >
+              <Printer size={13} className="text-kai-vermilion" />
+              <span>Print Practice Sheet (原稿用紙)</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {/* Left Column: Interactive Drawing Canvas with 3 Modes */}
+            <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi flex flex-col items-center gap-4">
+              <div className="flex items-center justify-between w-full">
+                <span className="text-2xs font-mono text-kai-muted uppercase">Interactive Canvas</span>
+
+                {/* 3-Mode Pill Switcher */}
+                <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-semibold">
+                  <button
+                    onClick={() => setPracticeMode('ghost')}
+                    className={`px-2.5 py-1 rounded-lg transition-colors ${
+                      practiceMode === 'ghost'
+                        ? 'bg-white dark:bg-kai-dark-card shadow-sm text-kai-ink font-bold'
+                        : 'text-kai-muted'
+                    }`}
+                  >
+                    Ghost Trace
+                  </button>
+                  <button
+                    onClick={() => setPracticeMode('trace')}
+                    className={`px-2.5 py-1 rounded-lg transition-colors ${
+                      practiceMode === 'trace'
+                        ? 'bg-white dark:bg-kai-dark-card shadow-sm text-kai-ink font-bold'
+                        : 'text-kai-muted'
+                    }`}
+                  >
+                    Solid Guide
+                  </button>
+                  <button
+                    onClick={() => setPracticeMode('freehand')}
+                    className={`px-2.5 py-1 rounded-lg transition-colors ${
+                      practiceMode === 'freehand'
+                        ? 'bg-white dark:bg-kai-dark-card shadow-sm text-kai-ink font-bold'
+                        : 'text-kai-muted'
+                    }`}
+                  >
+                    Freehand
+                  </button>
+                </div>
+              </div>
+
+              <DrawingCanvas
+                width={260}
+                height={260}
+                guideCharacter={selectedKana.character}
+                showGuide={practiceMode !== 'freehand'}
+                ghostGuide={practiceMode === 'ghost'}
+                onStrokeComplete={handleStrokeComplete}
+              />
+
+              {isTracingComplete && (
+                <div className="w-full p-3 rounded-2xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 flex items-center justify-between text-xs animate-in zoom-in-95">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} />
+                    <span className="font-bold">Stroke target reached! (+10 XP)</span>
+                  </div>
+                  <button
+                    onClick={() => setIsTracingComplete(false)}
+                    className="font-semibold underline text-2xs"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Numbered KanjiVG Stroke Animator & Direction Sequence */}
+            <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi space-y-4">
+              <div className="flex items-center justify-between border-b border-kai-border/60 pb-3">
+                <h3 className="text-base font-bold text-kai-ink dark:text-kai-dark-ink font-serif_jp flex items-center gap-2">
+                  <Layers size={17} className="text-kai-vermilion" />
+                  <span>Stroke Order Animation (筆順)</span>
+                </h3>
+                <span className="text-2xs font-mono text-kai-muted">KanjiVG Data</span>
+              </div>
+
+              <KanaStrokeAnimator
+                character={selectedKana.character}
+                strokePaths={selectedKana.stroke_paths || []}
+                strokeDirections={selectedKana.stroke_directions || []}
+                size={200}
+              />
+
+              {/* Stroke Direction Breakdown */}
+              <div className="space-y-2 pt-2">
+                <span className="text-2xs font-mono uppercase text-kai-muted block font-semibold">
+                  Stroke Sequence Breakdown
+                </span>
+                <div className="space-y-1.5">
+                  {selectedKana.stroke_directions &&
+                    selectedKana.stroke_directions.map((dir, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 rounded-xl bg-kai-bg/70 dark:bg-kai-dark-bg/60 border border-kai-border/50 flex items-center gap-2.5 text-xs"
+                      >
+                        <div className="w-5 h-5 rounded-full bg-kai-vermilion text-white flex items-center justify-center font-mono font-bold text-3xs flex-shrink-0">
+                          {idx + 1}
+                        </div>
+                        <span className="text-kai-ink dark:text-kai-dark-ink font-medium text-2xs">{dir}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Lookalike Warning for Selected Character */}
+              {(() => {
+                const match = KANA_LOOKALIKE_PAIRS.find(
+                  (p) => p.script === selectedScript && p.characters.includes(selectedKana.character)
+                );
+                if (!match) return null;
+
+                return (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/60 text-xs space-y-1.5">
+                    <span className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle size={14} className="text-amber-600" />
+                      <span>Confusable Lookalike: {match.title}</span>
+                    </span>
+                    <p className="text-2xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                      {match.keyDistinctionEn}
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODE 4: LOOKALIKES & COMMON MISTAKES COMPARISON PANEL                     */}
+      {/* ========================================================================= */}
+      {activeTab === 'lookalikes' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border shadow-washi space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold font-serif_jp text-kai-ink dark:text-kai-dark-ink flex items-center gap-2">
+                  <GitCompare size={20} className="text-kai-gold" />
+                  <span>Confusable {selectedScript === 'hiragana' ? 'Hiragana' : 'Katakana'} Lookalikes (似ている文字)</span>
+                </h2>
+                <p className="text-xs text-kai-muted">
+                  Side-by-side visual breakdowns to permanently cure lookalike confusion (e.g. さ vs き, わ vs れ vs ね, シ vs ツ).
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const allLookalikeChars = Array.from(
+                    new Set(
+                      KANA_LOOKALIKE_PAIRS.filter((p) => p.script === selectedScript).flatMap(
+                        (p) => p.characters
+                      )
+                    )
+                  )
+                    .map((char) => currentDataset.find((k) => k.character === char))
+                    .filter((k): k is KanaItem => Boolean(k));
+
+                  openPrintableGenkouYoushi(`${selectedScript === 'hiragana' ? 'Hiragana' : 'Katakana'} Lookalikes Sheet`, allLookalikeChars);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 border border-kai-border text-kai-ink dark:text-white font-bold text-2xs flex items-center gap-1.5 transition-all shadow-xs self-start sm:self-auto"
+              >
+                <Printer size={13} className="text-kai-vermilion" />
+                <span>Print Lookalikes Sheet</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {KANA_LOOKALIKE_PAIRS.filter((p) => p.script === selectedScript).map((pair) => (
+              <div
+                key={pair.id}
+                className="p-5 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border shadow-washi space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-kai-border/50 pb-2">
+                    <h3 className="font-bold text-sm font-serif_jp text-kai-ink dark:text-white">
+                      {pair.title}
+                    </h3>
+                    <span className="text-3xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                      High Confusion
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-900/40 border border-kai-border/60 text-xs space-y-1">
+                    <span className="font-bold text-kai-ink dark:text-white block text-2xs">
+                      Key Visual Distinction:
+                    </span>
+                    <p className="text-2xs text-kai-muted leading-relaxed">{pair.keyDistinctionEn}</p>
+                    {(displayMode === 'telugu' || displayMode === 'bilingual') && (
+                      <p className="font-telugu text-2xs text-kai-vermilion pt-0.5">{pair.keyDistinctionTe}</p>
+                    )}
+                  </div>
+
+                  {/* Character Comparison Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {pair.details.map((item, idx) => {
+                      const matchedKana = currentDataset.find((k) => k.character === item.char);
+
+                      return (
+                        <div
+                          key={idx}
+                          className="p-3 rounded-2xl bg-white dark:bg-kai-dark-bg/60 border border-kai-border flex flex-col items-center text-center gap-1.5"
+                        >
+                          <span className="font-japanese text-3xl font-bold text-kai-ink dark:text-white">
+                            {item.char}
+                          </span>
+                          <span className="font-mono text-xs font-bold text-kai-indigo dark:text-indigo-300">
+                            {item.reading} ({item.telugu})
+                          </span>
+                          <p className="text-3xs text-kai-muted line-clamp-2 leading-tight">
+                            {item.visualClue}
+                          </p>
+
+                          {matchedKana && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedKana(matchedKana);
+                                setActiveTab('practice');
+                              }}
+                              className="mt-1 px-2.5 py-1 rounded-lg bg-kai-vermilion/10 hover:bg-kai-vermilion hover:text-white text-kai-vermilion font-semibold text-3xs transition-colors"
+                            >
+                              Trace {item.char}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -1246,6 +1502,64 @@ export const KanaAcademy: React.FC = () => {
               <ArrowRight size={16} />
             </button>
           )}
+        </div>
+      )}
+
+      {/* Animated Stroke Order Modal */}
+      {animatingKana && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-kai-dark-card border border-kai-border rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-washi-lg">
+            <div className="flex items-center justify-between border-b border-kai-border/60 pb-3">
+              <div>
+                <span className="text-2xs font-mono text-kai-muted uppercase">KanjiVG Stroke Order</span>
+                <h3 className="text-base font-bold text-kai-ink dark:text-white font-serif_jp">
+                  {animatingKana.character} ({animatingKana.romaji} • {animatingKana.telugu_phonetic})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnimatingKana(null)}
+                className="p-1.5 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-kai-muted hover:text-kai-ink transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-2 flex justify-center">
+              <KanaStrokeAnimator
+                character={animatingKana.character}
+                strokePaths={animatingKana.stroke_paths || []}
+                strokeDirections={animatingKana.stroke_directions || []}
+                size={220}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedKana(animatingKana);
+                  setActiveTab('practice');
+                  setAnimatingKana(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-bold text-xs shadow-vermilion flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+              >
+                <PenTool size={13} />
+                <span>Practice Tracing</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  openPrintableGenkouYoushi(`${animatingKana.character} (${animatingKana.romaji}) Practice`, [animatingKana]);
+                }}
+                className="px-3.5 py-2.5 rounded-xl border border-kai-border hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold text-kai-ink dark:text-white flex items-center gap-1.5 transition-colors"
+                title="Print practice sheet"
+              >
+                <Printer size={13} />
+                <span>Print</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
