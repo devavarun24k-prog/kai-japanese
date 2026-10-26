@@ -1,5 +1,5 @@
 // src/services/storageService.ts
-// Robust local persistence layer with Supabase sync and full data portability
+// Robust local persistence layer with dynamic metrics derivation and full Supabase synchronization
 import {
   UserProfile,
   UserStats,
@@ -24,14 +24,14 @@ const STORAGE_KEYS = {
 
 // Default profile for new learner
 const DEFAULT_PROFILE: UserProfile = {
-  id: 'kai_master_user',
+  id: 'kai_owner_user',
   email: 'learner@kai.japanese',
   display_name: 'Sensei Apprentice',
   jlpt_target: 'N5',
   current_level: 'Beginner — Early Hiragana (ప్రారంభ దశ)',
   daily_goal_minutes: 20,
   sound_enabled: true,
-  display_mode: 'bilingual', // Shows English + Telugu alongside Japanese
+  display_mode: 'bilingual',
   romaji_enabled: true,
   furigana_enabled: true,
   theme: 'light',
@@ -39,20 +39,20 @@ const DEFAULT_PROFILE: UserProfile = {
   updated_at: new Date().toISOString(),
 };
 
-// Default stats for new learner
+// Default stats for new learner - ZERO fabricated numbers
 const DEFAULT_STATS: UserStats = {
-  total_xp: 120,
+  total_xp: 0,
   level: 1,
   level_title: 'Novice Scribe (ప్రారంభ విద్యార్థి)',
-  streak_days: 1,
-  last_study_date: new Date().toISOString().split('T')[0],
-  total_study_seconds: 420,
-  kana_mastery_pct: 12,
-  vocab_mastered_count: 5,
+  streak_days: 0,
+  last_study_date: '',
+  total_study_seconds: 0,
+  kana_mastery_pct: 0,
+  vocab_mastered_count: 0,
   kanji_mastered_count: 0,
-  grammar_mastered_count: 2,
-  reviews_due_count: 3,
-  accuracy_rate: 88,
+  grammar_mastered_count: 0,
+  reviews_due_count: 0,
+  accuracy_rate: 100,
 };
 
 class StorageService {
@@ -90,12 +90,11 @@ class StorageService {
     } catch (e) {}
   }
 
-  // Add XP and check level ups
+  // Add XP and recalculate real level
   public addXP(amount: number): { newXP: number; leveledUp: boolean; newLevel: number; title: string } {
     const stats = this.getStats();
     stats.total_xp += amount;
 
-    // Calculate level: Level = floor(sqrt(XP / 100)) + 1
     const newLevel = Math.max(1, Math.floor(Math.sqrt(stats.total_xp / 80)) + 1);
     const leveledUp = newLevel > stats.level;
     stats.level = newLevel;
@@ -142,25 +141,25 @@ class StorageService {
   public saveCards(cards: FSRSCard[]): void {
     try {
       localStorage.setItem(STORAGE_KEYS.FSRS_CARDS, JSON.stringify(cards));
-      const stats = this.getStats();
-      const now = new Date().toISOString();
-      stats.reviews_due_count = cards.filter((c) => c.due <= now).length;
-      this.saveStats(stats);
+      this.recalculateDerivedMetrics(cards, this.getAttempts());
     } catch (e) {}
   }
 
   public upsertCard(card: FSRSCard): void {
     const cards = this.getCards();
-    const idx = cards.findIndex((c) => c.card_id === card.card_id || (c.item_id === card.item_id && c.item_type === card.item_type));
+    const idx = cards.findIndex(
+      (c) => c.card_id === card.card_id || (c.item_id === card.item_id && c.item_type === card.item_type)
+    );
     if (idx >= 0) {
       cards[idx] = card;
     } else {
       cards.push(card);
     }
     this.saveCards(cards);
+    this.syncCardToSupabase(card);
   }
 
-  // Learning Attempts (Real persisted attempts for weakness detection)
+  // Learning Attempts
   public getAttempts(): LearningAttempt[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ATTEMPTS);
@@ -178,21 +177,45 @@ class StorageService {
 
     const attempts = this.getAttempts();
     attempts.unshift(fullAttempt);
-    // Keep last 1000 attempts for performant memory
     if (attempts.length > 1000) attempts.length = 1000;
 
     try {
       localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(attempts));
     } catch (e) {}
 
-    // Update global accuracy
-    const stats = this.getStats();
-    const recent = attempts.slice(0, 50);
-    const correctCount = recent.filter((a) => a.is_correct).length;
-    stats.accuracy_rate = Math.round((correctCount / Math.max(1, recent.length)) * 100);
-    this.saveStats(stats);
+    this.recalculateDerivedMetrics(this.getCards(), attempts);
+    this.syncAttemptToSupabase(fullAttempt);
 
     return fullAttempt;
+  }
+
+  // Dynamically recalculate real metrics based on stored cards and attempts
+  private recalculateDerivedMetrics(cards: FSRSCard[], attempts: LearningAttempt[]): void {
+    const stats = this.getStats();
+    const nowIso = new Date().toISOString();
+
+    // 1. Due reviews count
+    stats.reviews_due_count = cards.filter((c) => c.due <= nowIso).length;
+
+    // 2. Real Accuracy Rate
+    const recent = attempts.slice(0, 100);
+    if (recent.length === 0) {
+      stats.accuracy_rate = 100;
+    } else {
+      const correct = recent.filter((a) => a.is_correct).length;
+      stats.accuracy_rate = Math.round((correct / recent.length) * 100);
+    }
+
+    // 3. Real Kana Mastery Percentage (out of 46 Gojuon characters)
+    const masteredKana = cards.filter((c) => c.item_type === 'kana' && c.state === 2 && c.stability >= 1.5).length;
+    stats.kana_mastery_pct = Math.min(100, Math.round((masteredKana / 46) * 100));
+
+    // 4. Mastered Vocab, Kanji, Grammar counts
+    stats.vocab_mastered_count = cards.filter((c) => c.item_type === 'vocab' && c.state === 2).length;
+    stats.kanji_mastered_count = cards.filter((c) => c.item_type === 'kanji' && c.state === 2).length;
+    stats.grammar_mastered_count = cards.filter((c) => c.item_type === 'grammar' && c.state === 2).length;
+
+    this.saveStats(stats);
   }
 
   // Mistake Notebook
@@ -217,12 +240,15 @@ class StorageService {
     const mistakes = this.getMistakes();
     const existing = mistakes.find((m) => m.item_id === itemId && m.mistaken_input === mistakenInput);
 
+    let recordToSync: MistakeRecord;
+
     if (existing) {
       existing.frequency += 1;
       existing.last_occurred = new Date().toISOString();
       existing.resolved = false;
+      recordToSync = existing;
     } else {
-      mistakes.unshift({
+      recordToSync = {
         id: `mis_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         item_id: itemId,
         item_type: itemType,
@@ -236,12 +262,15 @@ class StorageService {
         first_occurred: new Date().toISOString(),
         last_occurred: new Date().toISOString(),
         resolved: false,
-      });
+      };
+      mistakes.unshift(recordToSync);
     }
 
     try {
       localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakes));
     } catch (e) {}
+
+    this.syncMistakeToSupabase(recordToSync);
   }
 
   public resolveMistake(id: string): void {
@@ -250,10 +279,11 @@ class StorageService {
     if (target) {
       target.resolved = true;
       localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakes));
+      this.syncMistakeToSupabase(target);
     }
   }
 
-  // Daily Quests
+  // Daily Quests - Start at ZERO progress
   public getQuests(): DailyQuest[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.QUESTS);
@@ -266,7 +296,7 @@ class StorageService {
         title_te: '5 హిరగాన అక్షరాలను సాధన చేయండి',
         description: 'Complete kana stroke order or quiz drills',
         reward_xp: 50,
-        progress: 2,
+        progress: 0,
         target: 5,
         completed: false,
         icon: 'pencil'
@@ -277,7 +307,7 @@ class StorageService {
         title_te: '5 దైనందిన పదాలను నేర్చుకోండి',
         description: 'Study vocabulary with Telugu & English meanings',
         reward_xp: 40,
-        progress: 1,
+        progress: 0,
         target: 5,
         completed: false,
         icon: 'book'
@@ -326,7 +356,7 @@ class StorageService {
     }
   }
 
-  // Achievements
+  // Achievements - All start LOCKED
   public getAchievements(): Achievement[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
@@ -340,10 +370,9 @@ class StorageService {
         description: 'Complete your first Hiragana trace exercise',
         icon: 'brush',
         reward_xp: 50,
-        progress: 1,
+        progress: 0,
         max_progress: 1,
-        unlocked: true,
-        unlocked_at: new Date().toISOString()
+        unlocked: false
       },
       {
         id: 'ach_vowel_circle',
@@ -352,7 +381,7 @@ class StorageService {
         description: 'Master the core Japanese vowels (A, I, U, E, O)',
         icon: 'award',
         reward_xp: 100,
-        progress: 3,
+        progress: 0,
         max_progress: 5,
         unlocked: false
       },
@@ -360,11 +389,11 @@ class StorageService {
         id: 'ach_speed_reflex',
         title: 'Kana Reflex Prodigy',
         title_jp: '早押し達人',
-        description: 'Score 1,000+ points in Kana Reflex mini-game',
+        description: 'Score 10+ points in Kana Reflex mini-game',
         icon: 'zap',
         reward_xp: 120,
         progress: 0,
-        max_progress: 1000,
+        max_progress: 10,
         unlocked: false
       },
       {
@@ -374,7 +403,7 @@ class StorageService {
         description: 'Maintain a 3-day Japanese study streak',
         icon: 'flame',
         reward_xp: 150,
-        progress: 1,
+        progress: 0,
         max_progress: 3,
         unlocked: false
       },
@@ -398,7 +427,7 @@ class StorageService {
     } catch (e) {}
   }
 
-  // Data Sovereignty & Portability
+  // Full JSON Export / Import
   public exportFullBackup(): string {
     const backup = {
       version: '1.0',
@@ -430,12 +459,12 @@ class StorageService {
     }
   }
 
-  // Clean wipe/purge for single-user privacy compliance
+  // Data Purge
   public purgeAllUserData(): void {
     Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
   }
 
-  // Supabase background sync
+  // Supabase Sync Up
   private async syncProfileToSupabase(profile: UserProfile): Promise<void> {
     if (!isSupabaseConfigured || !supabase) return;
     try {
@@ -453,6 +482,144 @@ class StorageService {
         updated_at: new Date().toISOString()
       });
     } catch (e) {}
+  }
+
+  private async syncCardToSupabase(card: FSRSCard): Promise<void> {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.from('fsrs_cards').upsert({
+        card_id: card.card_id,
+        user_id: session.user.id,
+        item_id: card.item_id,
+        item_type: card.item_type,
+        state: card.state,
+        due: card.due,
+        stability: card.stability,
+        difficulty: card.difficulty,
+        elapsed_days: card.elapsed_days,
+        scheduled_days: card.scheduled_days,
+        reps: card.reps,
+        lapses: card.lapses,
+        last_review: card.last_review,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {}
+  }
+
+  private async syncAttemptToSupabase(attempt: LearningAttempt): Promise<void> {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.from('learning_attempts').insert({
+        id: attempt.id,
+        user_id: session.user.id,
+        item_id: attempt.item_id,
+        item_type: attempt.item_type,
+        skill: attempt.skill,
+        question_type: attempt.question_type,
+        user_response: attempt.user_response,
+        expected_response: attempt.expected_response,
+        is_correct: attempt.is_correct,
+        error_category: attempt.error_category,
+        response_time_ms: attempt.response_time_ms,
+        hint_used: attempt.hint_used,
+        timestamp: attempt.timestamp
+      });
+    } catch (e) {}
+  }
+
+  private async syncMistakeToSupabase(mistake: MistakeRecord): Promise<void> {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.from('mistake_records').upsert({
+        id: mistake.id,
+        user_id: session.user.id,
+        item_id: mistake.item_id,
+        item_type: mistake.item_type,
+        prompt: mistake.prompt,
+        mistaken_input: mistake.mistaken_input,
+        correct_answer: mistake.correct_answer,
+        error_category: mistake.error_category,
+        notes_en: mistake.notes_en,
+        notes_te: mistake.notes_te,
+        frequency: mistake.frequency,
+        first_occurred: mistake.first_occurred,
+        last_occurred: mistake.last_occurred,
+        resolved: mistake.resolved
+      });
+    } catch (e) {}
+  }
+
+  // Supabase Pull / Restore
+  public async syncFromSupabase(): Promise<void> {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // 1. Fetch Profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileData) {
+        const localProfile = this.getProfile();
+        this.saveProfile({
+          ...localProfile,
+          email: profileData.email,
+          display_name: profileData.display_name,
+          jlpt_target: profileData.jlpt_target,
+          daily_goal_minutes: profileData.daily_goal_minutes,
+          display_mode: profileData.display_mode,
+          romaji_enabled: profileData.romaji_enabled,
+          furigana_enabled: profileData.furigana_enabled
+        });
+      }
+
+      // 2. Fetch Cards
+      const { data: cardData } = await supabase
+        .from('fsrs_cards')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+      if (cardData && cardData.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.FSRS_CARDS, JSON.stringify(cardData));
+      }
+
+      // 3. Fetch Mistakes
+      const { data: mistakeData } = await supabase
+        .from('mistake_records')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+      if (mistakeData && mistakeData.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.MISTAKES, JSON.stringify(mistakeData));
+      }
+
+      // 4. Fetch Attempts
+      const { data: attemptData } = await supabase
+        .from('learning_attempts')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('timestamp', { ascending: false })
+        .limit(200);
+
+      if (attemptData && attemptData.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(attemptData));
+      }
+
+      // Recalculate
+      this.recalculateDerivedMetrics(this.getCards(), this.getAttempts());
+    } catch (err) {
+      console.warn('Error syncing data from Supabase:', err);
+    }
   }
 }
 

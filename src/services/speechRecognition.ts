@@ -5,16 +5,13 @@ import { SpeechAssessmentResult } from '../types';
 
 // Web Speech API interface definitions
 interface IWindow extends Window {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   SpeechRecognition?: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   webkitSpeechRecognition?: any;
 }
 
 export type RecognitionState = 'idle' | 'listening' | 'processing' | 'error' | 'unsupported';
 
 export class SpeechRecognitionService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private recognition: any = null;
   private isSupported: boolean = false;
   private state: RecognitionState = 'idle';
@@ -160,7 +157,6 @@ export class SpeechRecognitionService {
     try {
       this.state = 'listening';
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.recognition.onresult = (event: any) => {
         let interim = '';
         let final = '';
@@ -181,7 +177,6 @@ export class SpeechRecognitionService {
         }
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.recognition.onerror = (event: any) => {
         this.state = 'error';
         let msg = 'Recognition error';

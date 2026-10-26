@@ -4,8 +4,6 @@ import { createWorker } from 'tesseract.js';
 import { HandwritingAnalysisResult } from '../types';
 
 export class OCRService {
-  private isWorkerReady: boolean = false;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private worker: any = null;
 
   // Pre-process image on canvas (grayscale + contrast boost for crisp handwriting extraction)

@@ -6,6 +6,7 @@ import { LearningProvider, useLearning } from './context/LearningContext';
 import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
 import { AuthModal } from './components/auth/AuthModal';
+import { AuthGateway } from './components/auth/AuthGateway';
 import { SettingsModal } from './components/settings/SettingsModal';
 
 // Modules
@@ -73,6 +74,23 @@ const AppContent: React.FC = () => {
         return <HomeDashboard />;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-kai-bg dark:bg-kai-dark-bg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-kai-vermilion to-kai-vermilion-dark flex items-center justify-center text-white font-serif_jp font-bold text-xl shadow-vermilion animate-pulse">
+            界
+          </div>
+          <span className="text-xs font-mono text-kai-muted">Loading KAI System...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthGateway />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-kai-bg dark:bg-kai-dark-bg text-kai-ink dark:text-kai-dark-ink transition-colors duration-200">

@@ -59,7 +59,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <p className="text-xs text-kai-muted">
             {isSupabaseConfigured
               ? 'Authorized Single-User Supabase Authentication'
-              : 'Authorized Single-User Master Passcode Security (Default: kai2025)'}
+              : 'Authorized Single-User Cryptographic Salted Master Lock'}
           </p>
         </div>
 
@@ -67,7 +67,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <label className="text-2xs font-mono font-bold uppercase text-kai-muted">
-              Owner Master Passcode
+              Owner Master Password
             </label>
             <div className="relative">
               <Key size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-kai-faint" />
@@ -76,7 +76,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter master passcode (e.g. kai2025)..."
+                placeholder="Enter your configured master password..."
                 className="w-full pl-10 pr-4 py-3 rounded-2xl bg-stone-50 dark:bg-kai-dark-bg border border-kai-border text-xs text-kai-ink dark:text-white placeholder:text-kai-faint focus:outline-none focus:ring-2 focus:ring-kai-vermilion/30"
               />
             </div>
