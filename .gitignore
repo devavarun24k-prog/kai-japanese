@@ -3,8 +3,10 @@ dist
 dist-ssr
 *.local
 .env
-.env.*.local
+.env.*
+!.env.example
 .DS_Store
+Thumbs.db
 release
 scratch
 android/.gradle
@@ -14,3 +16,23 @@ android/.idea
 *.apk
 *.aab
 isolated_worktree
+
+# Secrets & Keys
+*.pem
+*.key
+*.keystore
+*.jks
+
+# TypeScript & Build Caches
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories
+.vscode/
+.idea/
+
