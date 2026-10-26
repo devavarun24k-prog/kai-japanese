@@ -48,6 +48,33 @@ export default {
             muted: '#A5A29B',
             faint: '#6A6760'
           }
+        },
+        // Midnight Matsuri & Sumi-e authentic tokens
+        ai: {
+          950: '#0A101C',
+          900: '#0E1626',
+          800: '#141D33',
+          700: '#1C2945',
+          600: '#233457',
+          500: '#2E4370',
+          DEFAULT: '#141D33'
+        },
+        kinpaku: {
+          DEFAULT: '#C59B27',
+          light: '#E2BA4E',
+          dark: '#9E7A1C',
+          glow: 'rgba(197, 155, 39, 0.35)'
+        },
+        washi: {
+          DEFAULT: '#F3EBDD',
+          light: '#FAF5ED',
+          dark: '#E8DEC8',
+          border: '#DDD2B8'
+        },
+        sumi: {
+          DEFAULT: '#14110F',
+          light: '#231F1C',
+          muted: '#3D3833'
         }
       },
       fontFamily: {

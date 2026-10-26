@@ -1,7 +1,7 @@
 // src/components/landing/LiveWanakanaDemo.tsx
 // Live Romaji-to-Kana converter demo powered by Wanakana with ink-in animations,
 // full touch-keyboard compatibility, and preset starter chips
-import React, { useState, useId } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import * as wanakana from 'wanakana';
 import { Volume2, Sparkles, RefreshCw } from 'lucide-react';
@@ -24,7 +24,11 @@ const PRESET_WORDS: PresetWord[] = [
   { romaji: 'oishii', kana: 'おいしい', meaningEn: 'Delicious', meaningTe: 'రుచికరమైన', emoji: '🍱' }
 ];
 
-export const LiveWanakanaDemo: React.FC = () => {
+export interface LiveWanakanaDemoProps {
+  onKanaChange?: (kana: string) => void;
+}
+
+export const LiveWanakanaDemo: React.FC<LiveWanakanaDemoProps> = ({ onKanaChange }) => {
   const inputId = useId();
   const shouldReduceMotion = useReducedMotion();
   const [inputText, setInputText] = useState<string>('sakura');
@@ -32,6 +36,10 @@ export const LiveWanakanaDemo: React.FC = () => {
 
   // Convert input in real-time to Hiragana
   const kanaResult = wanakana.toHiragana(inputText.trim() || 'sakura');
+
+  useEffect(() => {
+    onKanaChange?.(kanaResult);
+  }, [kanaResult, onKanaChange]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;

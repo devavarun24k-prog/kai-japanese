@@ -1,7 +1,16 @@
 // src/components/landing/CinematicLandingPage.tsx
-// Redesigned Japanese Editorial Landing Experience for KAI
-// Features live Wanakana typing engine, Lenis smooth scrolling, scroll-driven kana assembly,
-// TiltCard showcases, MagneticButton CTAs, desktop custom cursor, and lazy-loaded below-the-fold components
+// "Midnight Matsuri + Sumi-e" Authentic Japanese Editorial Landing Experience for KAI
+// Features:
+// - Traditional Noren entrance curtain (skippable, session-cached, reduced-motion aware)
+// - Layered deep-indigo gradient (#0A101C -> #141D33) with Seigaiha wave pattern at 6% opacity
+// - Hanging Chochin festival lanterns swaying with spring physics & pointer proximity glow
+// - Dynamic Zen Enso calligraphy circle behind the hero headline
+// - Vertical decorative Japanese calligraphy headline: 「真の日本語へ、夜の祭りから」
+// - Alternating authentic Washi-paper sections (#F3EBDD) with static WashiTexture & Kinpaku GoldFlecks
+// - Section numbers stamped with Daiji Hanko seals (壱, 弐, 参, 肆)
+// - Real-time Romaji-to-Hiragana engine projecting typed kana onto the glowing center lantern
+// - TiltCard studio showcases, MagneticButton CTAs, desktop ink cursor, and Lenis smooth scrolling
+// - Full WCAG AA contrast compliance, strictly animating transform & opacity, mobile-responsive down to 375px
 import React, { useRef, useState, useEffect, Suspense, lazy } from 'react';
 import Lenis from 'lenis';
 import {
@@ -17,7 +26,21 @@ import {
   ArrowRight,
   FastForward
 } from 'lucide-react';
-import { PetalField, MagneticButton, TiltCard, SplitText, CustomCursor } from '../fx';
+import {
+  PetalField,
+  MagneticButton,
+  TiltCard,
+  SplitText,
+  CustomCursor,
+  EnsoCircle,
+  NorenCurtain,
+  ChochinLanterns,
+  Seigaiha,
+  Asanoha,
+  WashiTexture,
+  GoldFlecks,
+  HankoStamp
+} from '../fx';
 import { LiveWanakanaDemo } from './LiveWanakanaDemo';
 import { ScrollAssemblySection } from './ScrollAssemblySection';
 import { KaiMonCrest } from './OrnamentalElements';
@@ -41,6 +64,7 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
   isAuthenticated = false
 }) => {
   const [isMuted, setIsMuted] = useState<boolean>(soundEffects.getIsMuted());
+  const [heroKanaText, setHeroKanaText] = useState<string>('さくら');
 
   // Section Refs for smooth navigation
   const wanakanaDemoRef = useRef<HTMLDivElement | null>(null);
@@ -50,7 +74,6 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
 
   // Initialize Lenis smooth scroll
   useEffect(() => {
-    // Respect user's reduced-motion preference
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
     }
@@ -101,57 +124,60 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-kai-bg dark:bg-[#0A0F18] text-kai-ink dark:text-[#F0E5CE] font-sans overflow-x-hidden selection:bg-kai-vermilion selection:text-white transition-colors">
+    <div className="relative w-full min-h-screen bg-[#0A101C] text-[#F3EBDD] font-sans overflow-x-hidden selection:bg-kai-vermilion selection:text-white transition-colors">
+      {/* Traditional Noren Entrance Curtain (Parting on load, skippable) */}
+      <NorenCurtain />
+
       {/* Desktop-only subtle Japanese ink cursor */}
       <CustomCursor />
 
-      {/* Floating Canvas Petal Field (Strictly pointer-events-none) */}
+      {/* Floating Sakura Petals (Strictly pointer-events-none, pauses when hidden) */}
       <PetalField className="pointer-events-none z-0" interactive={true} />
 
       {/* =========================================================================
           TOP FLOATING NAVIGATION HEADER (USABLE DOWN TO 375PX)
           ========================================================================= */}
-      <header className="fixed top-3 inset-x-3 sm:top-4 sm:inset-x-8 z-50 flex items-center justify-between pointer-events-none gap-2">
+      <header className="fixed top-3 inset-x-3 sm:top-4 sm:inset-x-8 z-40 flex items-center justify-between pointer-events-none gap-2">
         {/* Brand Crest Pill */}
         <div
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="pointer-events-auto cursor-pointer px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/90 dark:bg-kai-dark-card/90 hover:bg-white border border-kai-border dark:border-kai-dark-border backdrop-blur-md flex items-center gap-2 shadow-sm transition-transform active:scale-95"
+          className="pointer-events-auto cursor-pointer px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#141D33]/90 hover:bg-[#1C2945] border border-[#2E4370]/60 backdrop-blur-md flex items-center gap-2 shadow-lg transition-transform active:scale-95"
         >
           <KaiMonCrest size={22} />
-          <span className="font-serif_jp font-bold text-xs sm:text-sm tracking-wider text-kai-ink dark:text-white">
+          <span className="font-serif_jp font-bold text-xs sm:text-sm tracking-wider text-[#FAF5ED]">
             KAI
           </span>
-          <span className="text-3xs font-mono text-kai-vermilion uppercase hidden md:inline">
+          <span className="text-3xs font-mono text-[#E2BA4E] uppercase hidden md:inline">
             | 日本語マスター
           </span>
         </div>
 
         {/* Center Quick Navigation (Desktop) */}
-        <nav className="pointer-events-auto hidden lg:flex items-center gap-1 px-4 py-1.5 rounded-full bg-white/90 dark:bg-kai-dark-card/90 border border-kai-border dark:border-kai-dark-border backdrop-blur-md shadow-sm text-xs font-medium text-kai-muted dark:text-stone-300">
+        <nav className="pointer-events-auto hidden lg:flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#141D33]/85 border border-[#2E4370]/60 backdrop-blur-md shadow-lg text-xs font-medium text-[#DDD2B8]">
           <button
             onClick={() => scrollToRef(wanakanaDemoRef)}
-            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion transition-colors"
+            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion-light transition-colors"
           >
             Romaji Engine
           </button>
-          <span>&bull;</span>
+          <span className="opacity-40">&bull;</span>
           <button
             onClick={() => scrollToRef(assemblyRef)}
-            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion transition-colors"
+            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion-light transition-colors"
           >
-            Word Assembly
+            Kana Assembly
           </button>
-          <span>&bull;</span>
+          <span className="opacity-40">&bull;</span>
           <button
             onClick={() => scrollToRef(showcaseRef)}
-            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion transition-colors"
+            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion-light transition-colors"
           >
             Curriculum
           </button>
-          <span>&bull;</span>
+          <span className="opacity-40">&bull;</span>
           <button
             onClick={() => scrollToRef(miniLessonRef)}
-            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion transition-colors"
+            className="px-2.5 py-1 rounded-full hover:text-kai-vermilion-light transition-colors"
           >
             Mini-Lesson
           </button>
@@ -163,7 +189,7 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
           <button
             onClick={toggleSound}
             aria-label={isMuted ? 'Unmute Sound' : 'Mute Sound'}
-            className="p-2 sm:p-2.5 rounded-full bg-white/90 dark:bg-kai-dark-card/90 border border-kai-border dark:border-kai-dark-border backdrop-blur-md text-kai-muted dark:text-stone-300 hover:text-kai-vermilion transition-all shadow-sm active:scale-95"
+            className="p-2 sm:p-2.5 rounded-full bg-[#141D33]/90 border border-[#2E4370]/60 backdrop-blur-md text-[#DDD2B8] hover:text-[#E2BA4E] transition-all shadow-md active:scale-95"
           >
             {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
@@ -180,35 +206,83 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
       </header>
 
       {/* =========================================================================
-          HERO SECTION: EDITORIAL HEADLINE & LIVE WANAKANA DEMO
+          HERO SECTION: MIDNIGHT MATSURI ATMOSPHERE & CHOCHIN LANTERNS
           ========================================================================= */}
-      <section className="relative min-h-[95vh] flex flex-col justify-center items-center px-4 sm:px-6 pt-24 sm:pt-28 pb-16 text-center overflow-hidden">
-        <div className="relative z-10 w-full max-w-4xl mx-auto space-y-6">
+      <section className="relative min-h-[96vh] flex flex-col justify-center items-center px-4 sm:px-6 pt-28 sm:pt-32 pb-20 text-center overflow-hidden bg-gradient-to-b from-[#0A101C] via-[#0E1626] to-[#141D33]">
+        {/* Seigaiha Traditional Wave Pattern at 6% Opacity */}
+        <Seigaiha color="#2E4370" opacity={0.06} size={54} />
+
+        {/* Radial Vignette Overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(5,8,15,0.75)_100%)]"
+          aria-hidden="true"
+        />
+
+        {/* Hanging Chochin Festival Lanterns (Desktop: 3 with proximity glow, Mobile: 2) */}
+        <ChochinLanterns centerKanaText={heroKanaText} />
+
+        {/* Vertical Decorative Japanese Calligraphy Headline (Desktop Side Accent) */}
+        <div className="hidden xl:flex flex-col items-center absolute left-8 top-36 z-20 pointer-events-none select-none opacity-80 border-l border-[#C59B27]/30 pl-3">
+          <span
+            className="font-serif_jp text-sm text-[#C59B27] tracking-[0.45em] leading-loose"
+            style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
+          >
+            真の日本語へ、夜の祭りから
+          </span>
+          <span className="w-1.5 h-1.5 rounded-full bg-kai-vermilion mt-3" />
+        </div>
+
+        {/* Right Vertical Accent (Desktop) */}
+        <div className="hidden xl:flex flex-col items-center absolute right-8 top-36 z-20 pointer-events-none select-none opacity-80 border-r border-[#C59B27]/30 pr-3">
+          <span
+            className="font-serif_jp text-sm text-[#DDD2B8] tracking-[0.45em] leading-loose"
+            style={{ writingMode: 'vertical-rl', textOrientation: 'upright' }}
+          >
+            界・一文字の無限
+          </span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#C59B27] mt-3" />
+        </div>
+
+        {/* Hero Content Container */}
+        <div className="relative z-10 w-full max-w-4xl mx-auto space-y-6 mt-10 sm:mt-12">
           {/* Welcome Tag */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 dark:bg-kai-dark-card/80 border border-kai-border dark:border-kai-dark-border text-3xs font-mono font-medium text-kai-muted dark:text-stone-300 shadow-sm backdrop-blur-sm">
-            <Sparkles size={12} className="text-kai-vermilion" />
-            <span>Modern Editorial Japanese Learning &bull; From Zero to Fluency</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#141D33]/85 border border-[#2E4370]/60 text-3xs font-mono font-medium text-[#DDD2B8] shadow-md backdrop-blur-sm">
+            <Sparkles size={12} className="text-[#E2BA4E]" />
+            <span>Midnight Matsuri &bull; Real Japanese Mastery from Zero</span>
           </div>
 
-          {/* Main Headline with SplitText Entrance */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-serif_jp font-bold tracking-tight text-kai-ink dark:text-white leading-tight">
-            <SplitText
-              text="Master Japanese from zero — naturally, playfully, completely."
-              by="words"
-              stagger={0.04}
-              delay={0.1}
-            />
-          </h1>
+          {/* Main Headline with SplitText Entrance & Enso Circle Behind */}
+          <div className="relative py-2">
+            {/* Dynamic Enso Circle */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <EnsoCircle
+                size={340}
+                color="#C59B27"
+                opacity={0.24}
+                duration={2.2}
+                delay={0.2}
+              />
+            </div>
+
+            <h1 className="relative z-10 text-3xl sm:text-5xl md:text-6xl font-serif_jp font-bold tracking-tight text-[#FAF5ED] leading-tight">
+              <SplitText
+                text="Master Japanese from zero — naturally, playfully, completely."
+                by="words"
+                stagger={0.04}
+                delay={0.15}
+              />
+            </h1>
+          </div>
 
           {/* English Subtitle */}
-          <p className="text-xs sm:text-base text-kai-muted dark:text-stone-300 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-base text-[#DDD2B8] max-w-2xl mx-auto leading-relaxed">
             No endless walls of cryptic Japanese text. Master <strong>Hiragana</strong>,{' '}
             <strong>Katakana</strong>, <strong>Kanji</strong>, and natural conversation with tactile feedback,
             playful mini-games, and intelligent spaced repetition.
           </p>
 
           {/* Telugu Support Subtitle */}
-          <p className="font-telugu text-2xs sm:text-xs text-kai-gold max-w-lg mx-auto">
+          <p className="font-telugu text-2xs sm:text-xs text-[#E2BA4E] max-w-lg mx-auto">
             స్పష్టమైన ఆంగ్ల వివరణలతో పాటు సులభమైన తెలుగు ఉచ్ఛారణ మార్గదర్శకత్వం.
           </p>
 
@@ -216,7 +290,7 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <MagneticButton
               onClick={handleEnterPlatform}
-              className="px-6 sm:px-8 py-3 rounded-2xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-bold text-xs sm:text-sm shadow-vermilion flex items-center gap-2 transition-transform"
+              className="px-6 sm:px-8 py-3.5 rounded-2xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-bold text-xs sm:text-sm shadow-vermilion flex items-center gap-2 transition-transform"
             >
               <Compass size={16} />
               <span>{isAuthenticated ? 'Open Learning Dashboard' : 'Start Learning Free'}</span>
@@ -225,164 +299,208 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
 
             <button
               onClick={() => scrollToRef(wanakanaDemoRef)}
-              className="px-4 sm:px-6 py-3 rounded-2xl bg-white/90 dark:bg-kai-dark-card/90 text-kai-ink dark:text-white border border-kai-border dark:border-kai-dark-border text-xs sm:text-sm font-semibold shadow-sm hover:border-kai-vermilion transition-all flex items-center gap-1.5"
+              className="px-4 sm:px-6 py-3.5 rounded-2xl bg-[#141D33]/90 text-[#FAF5ED] border border-[#2E4370]/70 text-xs sm:text-sm font-semibold shadow-md hover:border-[#C59B27] transition-all flex items-center gap-1.5 active:scale-95"
             >
               <span>Try Romaji Converter</span>
-              <ArrowDown size={14} className="text-kai-vermilion" />
+              <ArrowDown size={14} className="text-[#E2BA4E]" />
             </button>
           </div>
 
-          {/* LIVE WANAKANA DEMO IN HERO */}
+          {/* LIVE WANAKANA DEMO IN HERO (Linked to glowing center lantern) */}
           <div ref={wanakanaDemoRef} className="pt-6">
-            <LiveWanakanaDemo />
+            <LiveWanakanaDemo onKanaChange={setHeroKanaText} />
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          SECTION 2: SCROLL-DRIVEN KANA & SENTENCE ASSEMBLY (ROAD TO JLPT N1)
+          SECTION 1 (壱): SCROLL-DRIVEN KANA & SENTENCE ASSEMBLY (WASHI SECTION)
           ========================================================================= */}
-      <div ref={assemblyRef} className="border-t border-kai-border/70 dark:border-kai-dark-border/70 bg-stone-50/60 dark:bg-[#0D1420]/70">
-        <ScrollAssemblySection />
-      </div>
+      <section
+        ref={assemblyRef}
+        className="relative py-20 px-4 sm:px-6 bg-[#F3EBDD] text-[#14110F] border-t border-b border-[#DDD2B8] overflow-hidden"
+      >
+        {/* Authentic Mulberry Paper Grain & Sparse Kinpaku Flecks */}
+        <WashiTexture opacity={0.07} tone="light" />
+        <GoldFlecks density="sparse" />
 
-      {/* =========================================================================
-          SECTION 3: 3D TILT-CARD MODULE SHOWCASE
-          ========================================================================= */}
-      <section ref={showcaseRef} className="py-20 px-4 sm:px-6 max-w-6xl mx-auto space-y-12">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-kai-dark-card border border-kai-border text-3xs font-mono text-kai-muted">
-            <BookOpen size={12} className="text-kai-vermilion" />
-            <span>Interactive Learning Studios</span>
+        <div className="relative z-10 max-w-6xl mx-auto space-y-6">
+          {/* Section Header with Daiji Hanko Seal 壱 */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
+            <HankoStamp text="壱" size={44} shape="square" playSound={false} />
+            <div>
+              <span className="text-3xs font-mono font-bold uppercase tracking-wider text-[#9E2B1E]">
+                Stage 壱 &bull; Progression Map
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-serif_jp font-bold text-[#14110F]">
+                From First Stroke to Fluency
+              </h2>
+            </div>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-serif_jp font-bold text-kai-ink dark:text-white">
-            Designed for How the Brain Actually Learns
-          </h2>
-          <p className="text-xs sm:text-sm text-kai-muted dark:text-stone-300 max-w-lg mx-auto">
-            Move your cursor across any studio card to experience tactile 3D perspective and specular glare.
-          </p>
-        </div>
 
-        {/* 4 TiltCards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-          {/* Studio 1: Kana Academy */}
-          <TiltCard
-            maxTilt={12}
-            className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi-md space-y-3"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-kai-vermilion/10 text-kai-vermilion font-serif_jp font-bold text-2xl flex items-center justify-center">
-              あ
-            </div>
-            <h3 className="text-lg font-bold font-serif_jp text-kai-ink dark:text-white">
-              Kana Academy &amp; Radicals
-            </h3>
-            <p className="text-xs sm:text-sm text-kai-muted dark:text-stone-300 leading-relaxed">
-              Step-by-step Hiragana &amp; Katakana progression with visual mnemonics, stroke animations, and Telugu pronunciation guidance.
-            </p>
-            <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                46 Characters
-              </span>
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                Sumi-e Stroke Order
-              </span>
-            </div>
-          </TiltCard>
-
-          {/* Studio 2: Speaking Studio */}
-          <TiltCard
-            maxTilt={12}
-            className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi-md space-y-3"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-kai-indigo/10 text-kai-indigo font-bold text-xl flex items-center justify-center">
-              <Mic size={22} className="text-kai-indigo dark:text-indigo-300" />
-            </div>
-            <h3 className="text-lg font-bold font-serif_jp text-kai-ink dark:text-white">
-              Speaking &amp; Pitch Accent Studio
-            </h3>
-            <p className="text-xs sm:text-sm text-kai-muted dark:text-stone-300 leading-relaxed">
-              Real-time voice recognition that listens to your speech, analyzes pitch curves, and helps you speak like a Tokyo native.
-            </p>
-            <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                Voice Shadowing
-              </span>
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                Native Speed Drills
-              </span>
-            </div>
-          </TiltCard>
-
-          {/* Studio 3: 10 Arcade Mini-Games */}
-          <TiltCard
-            maxTilt={12}
-            className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi-md space-y-3"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-amber-100/70 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold text-xl flex items-center justify-center">
-              <Gamepad2 size={22} />
-            </div>
-            <h3 className="text-lg font-bold font-serif_jp text-kai-ink dark:text-white">
-              10 Interactive Learning Games
-            </h3>
-            <p className="text-xs sm:text-sm text-kai-muted dark:text-stone-300 leading-relaxed">
-              Assemble Shinkansen trains in SOV syntax order, solve Tokyo crime scenes in Particle Detective, and fight grammar boss monsters.
-            </p>
-            <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                Arcade Boss Battles
-              </span>
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                Memory Tiles
-              </span>
-            </div>
-          </TiltCard>
-
-          {/* Studio 4: FSRS Spaced Repetition */}
-          <TiltCard
-            maxTilt={12}
-            className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi-md space-y-3"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-xl flex items-center justify-center">
-              <Repeat size={22} />
-            </div>
-            <h3 className="text-lg font-bold font-serif_jp text-kai-ink dark:text-white">
-              FSRS Spaced Repetition Engine
-            </h3>
-            <p className="text-xs sm:text-sm text-kai-muted dark:text-stone-300 leading-relaxed">
-              Scientifically proven memory scheduling algorithms that prevent memory decay and guarantee 90%+ long-term retention.
-            </p>
-            <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                Optimal Spacing
-              </span>
-              <span className="px-2 py-0.5 rounded bg-stone-100 dark:bg-kai-dark-surface text-kai-muted dark:text-stone-300">
-                Offline Queue Sync
-              </span>
-            </div>
-          </TiltCard>
+          <ScrollAssemblySection />
         </div>
       </section>
 
       {/* =========================================================================
-          SECTION 4: LAZY-LOADED MINI-LESSON PREVIEW
+          SECTION 2 (弐): 3D TILT-CARD MODULE SHOWCASE (MIDNIGHT INDIGO SECTION)
           ========================================================================= */}
-      <section ref={miniLessonRef} className="py-16 px-4 sm:px-6 bg-stone-100/70 dark:bg-[#0E1522] border-t border-kai-border/70 dark:border-kai-dark-border/70">
-        <div className="max-w-4xl mx-auto space-y-6 text-center">
-          <div className="space-y-1">
-            <span className="text-3xs font-mono font-bold uppercase tracking-wider text-kai-vermilion">
-              Hands-On Demonstration
+      <section
+        ref={showcaseRef}
+        className="relative py-24 px-4 sm:px-6 bg-gradient-to-b from-[#0A101C] via-[#0E1626] to-[#141D33] overflow-hidden"
+      >
+        {/* Asanoha sacred hemp lattice pattern at low opacity */}
+        <Asanoha color="#C59B27" opacity={0.045} size={50} />
+
+        <div className="relative z-10 max-w-6xl mx-auto space-y-12">
+          {/* Section Header with Daiji Hanko Seal 弐 */}
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center gap-2">
+              <HankoStamp text="弐" size={44} shape="square" playSound={false} />
+            </div>
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#141D33] border border-[#2E4370]/60 text-3xs font-mono text-[#DDD2B8]">
+                <BookOpen size={12} className="text-[#E2BA4E]" />
+                <span>Interactive Learning Studios</span>
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-serif_jp font-bold text-[#FAF5ED]">
+                Designed for How the Brain Actually Learns
+              </h2>
+              <p className="text-xs sm:text-sm text-[#DDD2B8] max-w-lg mx-auto">
+                Move your cursor across any studio card to experience tactile 3D perspective and specular glare.
+              </p>
+            </div>
+          </div>
+
+          {/* 4 TiltCards Grid (Styled with Sumi-Lacquer / Washi Card Aesthetics) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            {/* Studio 1: Kana Academy */}
+            <TiltCard
+              maxTilt={12}
+              className="p-6 sm:p-8 rounded-3xl bg-[#141D33]/90 border border-[#2E4370]/70 shadow-2xl space-y-3 relative overflow-hidden group hover:border-[#C59B27]/60 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-kai-vermilion/20 border border-kai-vermilion/40 text-kai-vermilion font-serif_jp font-bold text-2xl flex items-center justify-center">
+                あ
+              </div>
+              <h3 className="text-lg font-bold font-serif_jp text-[#FAF5ED]">
+                Kana Academy &amp; Radicals
+              </h3>
+              <p className="text-xs sm:text-sm text-[#DDD2B8] leading-relaxed">
+                Step-by-step Hiragana &amp; Katakana progression with visual mnemonics, stroke animations, and Telugu pronunciation guidance.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  46 Characters
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  Sumi-e Stroke Order
+                </span>
+              </div>
+            </TiltCard>
+
+            {/* Studio 2: Speaking Studio */}
+            <TiltCard
+              maxTilt={12}
+              className="p-6 sm:p-8 rounded-3xl bg-[#141D33]/90 border border-[#2E4370]/70 shadow-2xl space-y-3 relative overflow-hidden group hover:border-[#C59B27]/60 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-[#2E4370]/30 border border-[#2E4370]/60 text-[#E2BA4E] font-bold text-xl flex items-center justify-center">
+                <Mic size={22} className="text-[#E2BA4E]" />
+              </div>
+              <h3 className="text-lg font-bold font-serif_jp text-[#FAF5ED]">
+                Speaking &amp; Pitch Accent Studio
+              </h3>
+              <p className="text-xs sm:text-sm text-[#DDD2B8] leading-relaxed">
+                Real-time voice recognition that listens to your speech, analyzes pitch curves, and helps you speak like a Tokyo native.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  Voice Shadowing
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  Native Speed Drills
+                </span>
+              </div>
+            </TiltCard>
+
+            {/* Studio 3: 10 Arcade Mini-Games */}
+            <TiltCard
+              maxTilt={12}
+              className="p-6 sm:p-8 rounded-3xl bg-[#141D33]/90 border border-[#2E4370]/70 shadow-2xl space-y-3 relative overflow-hidden group hover:border-[#C59B27]/60 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-[#E2BA4E] font-bold text-xl flex items-center justify-center">
+                <Gamepad2 size={22} />
+              </div>
+              <h3 className="text-lg font-bold font-serif_jp text-[#FAF5ED]">
+                10 Interactive Learning Games
+              </h3>
+              <p className="text-xs sm:text-sm text-[#DDD2B8] leading-relaxed">
+                Assemble Shinkansen trains in SOV syntax order, solve Tokyo crime scenes in Particle Detective, and fight grammar boss monsters.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  Arcade Boss Battles
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  Memory Tiles
+                </span>
+              </div>
+            </TiltCard>
+
+            {/* Studio 4: FSRS Spaced Repetition */}
+            <TiltCard
+              maxTilt={12}
+              className="p-6 sm:p-8 rounded-3xl bg-[#141D33]/90 border border-[#2E4370]/70 shadow-2xl space-y-3 relative overflow-hidden group hover:border-[#C59B27]/60 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-[#3C9B64] font-bold text-xl flex items-center justify-center">
+                <Repeat size={22} />
+              </div>
+              <h3 className="text-lg font-bold font-serif_jp text-[#FAF5ED]">
+                FSRS Spaced Repetition Engine
+              </h3>
+              <p className="text-xs sm:text-sm text-[#DDD2B8] leading-relaxed">
+                Scientifically proven memory scheduling algorithms that prevent memory decay and guarantee 90%+ long-term retention.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-2 text-3xs font-mono">
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  Optimal Spacing
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#1C2945] text-[#FAF5ED] border border-[#2E4370]/50">
+                  Offline Queue Sync
+                </span>
+              </div>
+            </TiltCard>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          SECTION 3 (参): MINI-LESSON PREVIEW (WASHI PAPER SECTION)
+          ========================================================================= */}
+      <section
+        ref={miniLessonRef}
+        className="relative py-20 px-4 sm:px-6 bg-[#F3EBDD] text-[#14110F] border-t border-b border-[#DDD2B8] overflow-hidden"
+      >
+        {/* Authentic Mulberry Paper Grain & Sparse Kinpaku Flecks */}
+        <WashiTexture opacity={0.07} tone="light" />
+        <GoldFlecks density="sparse" />
+
+        <div className="relative z-10 max-w-4xl mx-auto space-y-6 text-center">
+          <div className="flex flex-col items-center gap-2">
+            <HankoStamp text="参" size={44} shape="square" playSound={false} />
+            <span className="text-3xs font-mono font-bold uppercase tracking-wider text-[#9E2B1E]">
+              Hands-On Demonstration &bull; 60 Seconds
             </span>
-            <h2 className="text-2xl sm:text-3xl font-serif_jp font-bold text-kai-ink dark:text-white">
+            <h2 className="text-2xl sm:text-3xl font-serif_jp font-bold text-[#14110F]">
               Solve Your First Character in 60 Seconds
             </h2>
-            <p className="text-xs sm:text-sm text-kai-muted dark:text-stone-300 max-w-md mx-auto">
+            <p className="text-xs sm:text-sm text-[#524B42] max-w-md mx-auto">
               Experience the mnemonic learning method without signing up.
             </p>
           </div>
 
           <Suspense
             fallback={
-              <div className="p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border animate-pulse max-w-lg mx-auto text-xs text-kai-muted">
+              <div className="p-8 rounded-3xl bg-white border border-[#DDD2B8] animate-pulse max-w-lg mx-auto text-xs text-[#524B42]">
                 Loading interactive mini-lesson preview...
               </div>
             }
@@ -393,18 +511,22 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
       </section>
 
       {/* =========================================================================
-          FOOTER INVITATION & DIRECT ACTION
+          SECTION 4 (肆) & FOOTER: MIDNIGHT MATSURI DEPARTURE
           ========================================================================= */}
-      <footer className="py-16 px-4 sm:px-6 bg-kai-bg dark:bg-[#070A10] border-t border-kai-border dark:border-kai-dark-border text-center space-y-6">
-        <div className="max-w-md mx-auto space-y-4">
+      <footer className="relative py-20 px-4 sm:px-6 bg-[#0A101C] border-t border-[#2E4370]/60 text-center space-y-6 overflow-hidden">
+        {/* Seigaiha waves in footer */}
+        <Seigaiha color="#2E4370" opacity={0.05} size={54} />
+
+        <div className="relative z-10 max-w-md mx-auto space-y-4">
           <div className="flex items-center justify-center gap-2">
+            <HankoStamp text="肆" size={38} shape="square" playSound={false} />
             <KaiMonCrest size={32} />
-            <span className="font-serif_jp font-bold text-base text-kai-ink dark:text-white">
+            <span className="font-serif_jp font-bold text-base text-[#FAF5ED]">
               KAI — 日本語マスター
             </span>
           </div>
 
-          <p className="text-xs text-kai-muted dark:text-stone-400 leading-relaxed">
+          <p className="text-xs text-[#DDD2B8] leading-relaxed">
             Personal Japanese Mastery Platform. Built for absolute beginners with trilingual English &amp; Telugu support.
           </p>
 
@@ -417,20 +539,32 @@ export const CinematicLandingPage: React.FC<CinematicLandingPageProps> = ({
           </MagneticButton>
         </div>
 
-        <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-3xs font-mono text-kai-muted dark:text-stone-400">
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:text-kai-vermilion">
+        <div className="relative z-10 pt-4 flex flex-wrap items-center justify-center gap-4 text-3xs font-mono text-[#DDD2B8]">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="hover:text-kai-vermilion-light transition-colors"
+          >
             Back to Top &uarr;
           </button>
           <span>&bull;</span>
-          <button onClick={() => onEnterApp('kana')} className="hover:text-kai-vermilion">
+          <button
+            onClick={() => onEnterApp('kana')}
+            className="hover:text-kai-vermilion-light transition-colors"
+          >
             Kana Academy
           </button>
           <span>&bull;</span>
-          <button onClick={() => onEnterApp('rpg_games')} className="hover:text-kai-vermilion">
+          <button
+            onClick={() => onEnterApp('rpg_games')}
+            className="hover:text-kai-vermilion-light transition-colors"
+          >
             Game Arcade
           </button>
           <span>&bull;</span>
-          <button onClick={() => onEnterApp('dashboard')} className="hover:text-kai-vermilion">
+          <button
+            onClick={() => onEnterApp('dashboard')}
+            className="hover:text-kai-vermilion-light transition-colors"
+          >
             Dashboard
           </button>
         </div>
