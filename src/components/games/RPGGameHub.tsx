@@ -292,86 +292,130 @@ export const RPGGameHub: React.FC = () => {
     desc: string;
     icon: string;
     xp: number;
+    category: string;
+    difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Boss';
+    colorTheme: 'vermilion' | 'gold' | 'indigo' | 'emerald' | 'purple' | 'amber';
+    badge: string;
   }[] = [
     {
       id: 'kana_reflex',
-      title: 'Kana Reflex',
+      title: 'Kana Reflex Sprint',
       titleJp: '早押しかな',
-      desc: 'Speed-identify Hiragana characters before the 10s timer expires!',
+      desc: 'Speed-identify Hiragana characters before the 10s countdown expires!',
       icon: '⚡',
-      xp: 40
+      xp: 40,
+      category: 'Speed Drill',
+      difficulty: 'Beginner',
+      colorTheme: 'amber',
+      badge: 'Timed Sprint'
     },
     {
       id: 'memory_match',
-      title: 'Memory Match',
+      title: 'Memory Tile Match',
       titleJp: '絵合わせ',
-      desc: 'Flip and match Japanese words with English & Telugu meanings.',
+      desc: 'Flip and match Japanese word pairs with English & Telugu meanings.',
       icon: '🎴',
-      xp: 50
+      xp: 50,
+      category: 'Memory Cards',
+      difficulty: 'Beginner',
+      colorTheme: 'indigo',
+      badge: 'Card Flip'
     },
     {
       id: 'grammar_boss',
       title: 'Grammar Boss Battle',
       titleJp: '文法魔王戦',
-      desc: 'Defeat the Shadow Shogun using particle and conjugation spells!',
+      desc: 'Defeat the Shadow Shogun using particle and verb conjugation spells!',
       icon: '👹',
-      xp: 100
+      xp: 100,
+      category: 'Tactical RPG',
+      difficulty: 'Boss',
+      colorTheme: 'vermilion',
+      badge: 'Boss Fight'
     },
     {
       id: 'particle_detective',
       title: 'Particle Detective',
       titleJp: '助詞探偵',
-      desc: 'Investigate missing particles at Tokyo crime scenes.',
+      desc: 'Investigate crime scenes across Tokyo by deducing missing particles.',
       icon: '🔍',
-      xp: 45
+      xp: 45,
+      category: 'Mystery Puzzle',
+      difficulty: 'Intermediate',
+      colorTheme: 'emerald',
+      badge: 'Deduction'
     },
     {
       id: 'kanji_forge',
-      title: 'Kanji Forge',
+      title: 'Kanji Radical Forge',
       titleJp: '漢字鍛冶',
-      desc: 'Assemble radical components together into legitimate Kanji.',
+      desc: 'Assemble radical components together to forge legitimate Kanji characters.',
       icon: '🔨',
-      xp: 50
+      xp: 50,
+      category: 'Crafting',
+      difficulty: 'Intermediate',
+      colorTheme: 'purple',
+      badge: 'Assembly'
     },
     {
       id: 'sentence_builder',
       title: 'Shinkansen Sentence Builder',
       titleJp: '文列車',
-      desc: 'Link sentence cars in proper SOV order on the railway.',
+      desc: 'Link railroad cars in authentic Subject-Object-Verb (SOV) order.',
       icon: '🚄',
-      xp: 60
+      xp: 60,
+      category: 'Syntax Puzzle',
+      difficulty: 'Intermediate',
+      colorTheme: 'indigo',
+      badge: 'Railway'
     },
     {
       id: 'listening_hunter',
       title: 'Listening Hunter',
       titleJp: '音狩り',
-      desc: 'Identify target kana by listening to native Japanese pronunciation.',
+      desc: 'Identify the target character by tuning your ear to native pronunciation.',
       icon: '🎯',
-      xp: 50
+      xp: 50,
+      category: 'Audio Drill',
+      difficulty: 'Beginner',
+      colorTheme: 'amber',
+      badge: 'Aural'
     },
     {
       id: 'word_quest',
       title: 'Word Quest Dungeon',
       titleJp: '単語ダンジョン',
-      desc: 'Dungeon crawl through N5 vocabulary chambers and defeat monsters.',
+      desc: 'Dungeon crawl through N5 vocabulary chambers and vanquish monsters.',
       icon: '🗡️',
-      xp: 75
+      xp: 75,
+      category: 'Dungeon Crawl',
+      difficulty: 'Intermediate',
+      colorTheme: 'vermilion',
+      badge: 'Dungeon'
     },
     {
       id: 'daily_challenge',
       title: 'Daily Challenge Rush',
       titleJp: '日課試練',
-      desc: 'Sprint testing kana, vocabulary, and grammar in succession.',
+      desc: 'A mixed sprint testing Kana, Vocabulary, and Grammar in quick succession.',
       icon: '⭐',
-      xp: 80
+      xp: 80,
+      category: 'All-Rounder',
+      difficulty: 'Intermediate',
+      colorTheme: 'gold',
+      badge: 'Daily Sprint'
     },
     {
       id: 'jlpt_arena',
       title: 'JLPT Exam Arena',
       titleJp: '試験場',
-      desc: 'Full mock exam simulator with official JLPT scoring.',
+      desc: 'Realistic diagnostic simulator scored with official JLPT weighting.',
       icon: '🏛️',
-      xp: 90
+      xp: 90,
+      category: 'Diagnostic',
+      difficulty: 'Advanced',
+      colorTheme: 'indigo',
+      badge: 'Exam Sim'
     }
   ];
 
@@ -717,29 +761,75 @@ export const RPGGameHub: React.FC = () => {
                 if (g.id === 'daily_challenge') startDailySprint();
                 if (g.id === 'jlpt_arena') startArena();
               }}
-              className="p-5 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi hover:shadow-washi-lg hover:border-kai-vermilion/50 transition-all cursor-pointer group flex flex-col justify-between gap-4"
+              className="relative p-6 rounded-3xl bg-white dark:bg-kai-dark-card border-2 border-kai-border/80 dark:border-kai-dark-border hover:border-kai-vermilion/60 shadow-washi hover:shadow-washi-lg transition-all duration-200 cursor-pointer group flex flex-col justify-between gap-5 overflow-hidden"
             >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl">{g.icon}</span>
-                  <span className="text-2xs font-mono font-bold px-2 py-0.5 rounded-full bg-kai-gold/15 text-kai-gold">
-                    +{g.xp} XP
+              {/* Subtle card background accent */}
+              <div
+                className={`absolute -right-6 -bottom-6 w-28 h-28 rounded-full opacity-5 pointer-events-none ${
+                  g.colorTheme === 'vermilion'
+                    ? 'bg-kai-vermilion'
+                    : g.colorTheme === 'emerald'
+                    ? 'bg-emerald-500'
+                    : g.colorTheme === 'purple'
+                    ? 'bg-purple-500'
+                    : g.colorTheme === 'gold'
+                    ? 'bg-amber-500'
+                    : 'bg-kai-indigo'
+                }`}
+              />
+
+              <div className="space-y-3 relative z-10">
+                {/* Header: Mechanics category & Difficulty pill */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-3xs font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-100 dark:bg-kai-dark-bg text-kai-muted dark:text-stone-300">
+                    {g.category}
+                  </span>
+
+                  <span
+                    className={`text-3xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                      g.difficulty === 'Boss'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-300/40'
+                        : g.difficulty === 'Beginner'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : g.difficulty === 'Advanced'
+                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                    }`}
+                  >
+                    {g.difficulty}
                   </span>
                 </div>
-                <div>
-                  <h3 className="font-bold text-kai-ink dark:text-kai-dark-ink group-hover:text-kai-vermilion transition-colors text-sm font-sans flex items-center gap-1.5">
-                    <span>{g.title}</span>
-                    <span className="font-japanese font-normal text-xs text-kai-muted">
-                      ({g.titleJp})
-                    </span>
-                  </h3>
-                  <p className="text-xs text-kai-muted mt-1 leading-snug">{g.desc}</p>
+
+                {/* Center Icon & Title */}
+                <div className="flex items-start gap-3 pt-1">
+                  <div className="w-12 h-12 rounded-2xl bg-stone-50 dark:bg-kai-dark-bg border border-kai-border/60 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
+                    {g.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-kai-ink dark:text-kai-dark-ink group-hover:text-kai-vermilion transition-colors text-sm font-sans flex items-baseline gap-1.5 flex-wrap">
+                      <span>{g.title}</span>
+                      <span className="font-japanese font-normal text-2xs text-kai-muted">
+                        ({g.titleJp})
+                      </span>
+                    </h3>
+                    <p className="text-xs text-kai-muted mt-1 leading-snug line-clamp-2">
+                      {g.desc}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center text-xs font-semibold text-kai-indigo group-hover:translate-x-1 transition-transform gap-1">
-                <span>Play Game</span>
-                <ArrowRight size={13} />
+              {/* Bottom Footer: XP reward & Play Action */}
+              <div className="pt-2 border-t border-kai-border/50 dark:border-kai-dark-border/50 flex items-center justify-between relative z-10">
+                <span className="text-2xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-300/30">
+                  <Sparkles size={11} className="text-amber-500" />
+                  <span>+{g.xp} XP</span>
+                </span>
+
+                <div className="flex items-center text-xs font-semibold text-kai-vermilion group-hover:translate-x-1 transition-transform gap-1">
+                  <span>Play Game</span>
+                  <ArrowRight size={13} />
+                </div>
               </div>
             </div>
           ))}

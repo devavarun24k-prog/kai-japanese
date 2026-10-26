@@ -19,6 +19,7 @@ import { HandwritingAnalysisResult } from '../../types';
 import { useLearning } from '../../context/LearningContext';
 import { storageService } from '../../services/storageService';
 import { soundEffects } from '../../services/soundEffects';
+import { MascotKai } from '../common/MascotKai';
 
 export const HandwritingStudio: React.FC = () => {
   const { displayMode, awardXP, recordAttempt } = useLearning();
@@ -203,19 +204,49 @@ ${analysisResult.explanations_te}
 
       {/* Input Stage: Canvas or File Upload */}
       {inputMode === 'canvas' ? (
-        <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi flex flex-col items-center gap-4">
-          <div className="text-center space-y-1">
-            <span className="text-2xs font-mono text-kai-muted">Draw Target Character</span>
-            <div className="text-4xl font-bold font-japanese text-kai-ink dark:text-kai-dark-ink">
-              {targetChar}
+        <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-washi flex flex-col items-center gap-5">
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full max-w-md px-2 gap-4">
+            <div className="text-left space-y-0.5">
+              <span className="text-2xs font-mono text-kai-muted uppercase tracking-wider">
+                Target Character
+              </span>
+              <div className="text-3xl font-bold font-japanese text-kai-ink dark:text-kai-dark-ink flex items-center gap-2">
+                <span>{targetChar}</span>
+                <span className="text-xs font-mono font-normal text-kai-muted">
+                  (Click &apos;Guide On&apos; below to trace)
+                </span>
+              </div>
             </div>
+
+            <MascotKai
+              mood={
+                isAnalyzing
+                  ? 'thinking'
+                  : analysisResult?.is_correct
+                  ? 'celebrating'
+                  : analysisResult
+                  ? 'reacting_to_mistake'
+                  : 'curious'
+              }
+              speechText={
+                isAnalyzing
+                  ? 'Inspecting your stroke order and proportions...'
+                  : analysisResult?.is_correct
+                  ? 'Excellent stroke balance! Beautiful calligraphy!'
+                  : analysisResult
+                  ? 'Close! Notice where the stroke curves. Try again!'
+                  : `Draw "${targetChar}" with smooth deliberate strokes!`
+              }
+              size="sm"
+              bubblePlacement="bottom"
+            />
           </div>
 
           <DrawingCanvas
-            width={260}
-            height={260}
+            width={280}
+            height={280}
             guideCharacter={targetChar}
-            showGuide={false}
+            showGuide={true}
             onStrokeComplete={handleCanvasStroke}
           />
 

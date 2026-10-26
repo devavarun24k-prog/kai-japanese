@@ -28,6 +28,7 @@ const BASE_STORAGE_KEYS = {
   CUSTOM_DECKS: 'custom_decks',
   COMPLETED_LESSONS: 'completed_lessons',
   FAVORITES: 'favorite_vocab',
+  SYNC_QUEUE: 'offline_sync_queue',
 } as const;
 
 // Legacy unscoped storage keys for backwards compatibility and migration
@@ -76,6 +77,14 @@ const DEFAULT_STATS: UserStats = {
 
 class StorageService {
   private currentUserId: string | null = null;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        this.flushOfflineSyncQueue();
+      });
+    }
+  }
 
   // Set the active authenticated user ID and trigger migration if needed
   public setUserId(userId: string | null): void {
@@ -665,9 +674,79 @@ class StorageService {
     });
   }
 
-  // Supabase Sync Up
-  private async syncProfileToSupabase(profile: UserProfile): Promise<void> {
+  // Offline Sync Queue
+  public getPendingSyncQueue(): Array<{ type: 'profile' | 'card' | 'attempt' | 'mistake'; payload: any; timestamp: string }> {
+    if (!this.currentUserId) return [];
+    try {
+      const data = localStorage.getItem(this.getKey(BASE_STORAGE_KEYS.SYNC_QUEUE));
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  public getPendingSyncCount(): number {
+    return this.getPendingSyncQueue().length;
+  }
+
+  public enqueueOfflineSync(type: 'profile' | 'card' | 'attempt' | 'mistake', payload: any): void {
+    if (!this.currentUserId) return;
+    const queue = this.getPendingSyncQueue();
+    // Deduplicate same card or profile updates
+    if (type === 'card' && payload?.card_id) {
+      const idx = queue.findIndex((q) => q.type === 'card' && q.payload?.card_id === payload.card_id);
+      if (idx >= 0) queue.splice(idx, 1);
+    } else if (type === 'profile') {
+      const idx = queue.findIndex((q) => q.type === 'profile');
+      if (idx >= 0) queue.splice(idx, 1);
+    }
+    queue.push({ type, payload, timestamp: new Date().toISOString() });
+    try {
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.SYNC_QUEUE), JSON.stringify(queue));
+    } catch (e) {}
+  }
+
+  public async flushOfflineSyncQueue(): Promise<{ synced: number; remaining: number }> {
+    if (!isSupabaseConfigured || !supabase || !this.currentUserId) {
+      return { synced: 0, remaining: 0 };
+    }
+    const queue = this.getPendingSyncQueue();
+    if (queue.length === 0) return { synced: 0, remaining: 0 };
+
+    const remaining: typeof queue = [];
+    let synced = 0;
+
+    for (const item of queue) {
+      try {
+        if (item.type === 'profile') {
+          await this.syncProfileToSupabase(item.payload, false);
+        } else if (item.type === 'card') {
+          await this.syncCardToSupabase(item.payload, false);
+        } else if (item.type === 'attempt') {
+          await this.syncAttemptToSupabase(item.payload, false);
+        } else if (item.type === 'mistake') {
+          await this.syncMistakeToSupabase(item.payload, false);
+        }
+        synced++;
+      } catch (e) {
+        remaining.push(item);
+      }
+    }
+
+    try {
+      localStorage.setItem(this.getKey(BASE_STORAGE_KEYS.SYNC_QUEUE), JSON.stringify(remaining));
+    } catch (e) {}
+
+    return { synced, remaining: remaining.length };
+  }
+
+  // Supabase Sync Up with Automatic Offline Fallback Queue
+  private async syncProfileToSupabase(profile: UserProfile, shouldQueueOnError: boolean = true): Promise<void> {
     if (!isSupabaseConfigured || !supabase) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine && shouldQueueOnError) {
+      this.enqueueOfflineSync('profile', profile);
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -682,14 +761,20 @@ class StorageService {
         furigana_enabled: profile.furigana_enabled,
         updated_at: new Date().toISOString()
       });
-      if (error) console.warn('Supabase profile sync notice:', error.message);
+      if (error) {
+        if (shouldQueueOnError) this.enqueueOfflineSync('profile', profile);
+      }
     } catch (e) {
-      console.warn('Supabase profile sync error:', e);
+      if (shouldQueueOnError) this.enqueueOfflineSync('profile', profile);
     }
   }
 
-  private async syncCardToSupabase(card: FSRSCard): Promise<void> {
+  private async syncCardToSupabase(card: FSRSCard, shouldQueueOnError: boolean = true): Promise<void> {
     if (!isSupabaseConfigured || !supabase) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine && shouldQueueOnError) {
+      this.enqueueOfflineSync('card', card);
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -709,14 +794,20 @@ class StorageService {
         last_review: card.last_review,
         updated_at: new Date().toISOString()
       });
-      if (error) console.warn('Supabase card sync notice:', error.message);
+      if (error) {
+        if (shouldQueueOnError) this.enqueueOfflineSync('card', card);
+      }
     } catch (e) {
-      console.warn('Supabase card sync error:', e);
+      if (shouldQueueOnError) this.enqueueOfflineSync('card', card);
     }
   }
 
-  private async syncAttemptToSupabase(attempt: LearningAttempt): Promise<void> {
+  private async syncAttemptToSupabase(attempt: LearningAttempt, shouldQueueOnError: boolean = true): Promise<void> {
     if (!isSupabaseConfigured || !supabase) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine && shouldQueueOnError) {
+      this.enqueueOfflineSync('attempt', attempt);
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -735,14 +826,20 @@ class StorageService {
         hint_used: attempt.hint_used,
         timestamp: attempt.timestamp
       });
-      if (error) console.warn('Supabase attempt sync notice:', error.message);
+      if (error) {
+        if (shouldQueueOnError) this.enqueueOfflineSync('attempt', attempt);
+      }
     } catch (e) {
-      console.warn('Supabase attempt sync error:', e);
+      if (shouldQueueOnError) this.enqueueOfflineSync('attempt', attempt);
     }
   }
 
-  private async syncMistakeToSupabase(mistake: MistakeRecord): Promise<void> {
+  private async syncMistakeToSupabase(mistake: MistakeRecord, shouldQueueOnError: boolean = true): Promise<void> {
     if (!isSupabaseConfigured || !supabase) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine && shouldQueueOnError) {
+      this.enqueueOfflineSync('mistake', mistake);
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -762,9 +859,11 @@ class StorageService {
         last_occurred: mistake.last_occurred,
         resolved: mistake.resolved
       });
-      if (error) console.warn('Supabase mistake sync notice:', error.message);
+      if (error) {
+        if (shouldQueueOnError) this.enqueueOfflineSync('mistake', mistake);
+      }
     } catch (e) {
-      console.warn('Supabase mistake sync error:', e);
+      if (shouldQueueOnError) this.enqueueOfflineSync('mistake', mistake);
     }
   }
 

@@ -1,8 +1,9 @@
 // src/App.tsx
 // Main application shell coordinating modules, navigation, and state
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LearningProvider, useLearning } from './context/LearningContext';
+import { platformService } from './services/platformService';
 import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
 import { AuthModal } from './components/auth/AuthModal';
@@ -46,6 +47,30 @@ const AppContent: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [showAuthGateway, setShowAuthGateway] = useState<boolean>(false);
+
+  // Cross-Platform Back Button Handler (Mobile/Android & Universal Navigation)
+  useEffect(() => {
+    const unsub = platformService.registerBackButtonHandler(() => {
+      if (isSettingsOpen) {
+        setIsSettingsOpen(false);
+        return true;
+      }
+      if (isAuthModalOpen) {
+        setIsAuthModalOpen(false);
+        return true;
+      }
+      if (showAuthGateway) {
+        setShowAuthGateway(false);
+        return true;
+      }
+      if (activeSection !== 'dashboard') {
+        setActiveSection('dashboard');
+        return true;
+      }
+      return false; // On dashboard: allow standard exit
+    });
+    return unsub;
+  }, [isSettingsOpen, isAuthModalOpen, showAuthGateway, activeSection]);
 
   // Render active module
   const renderModule = () => {

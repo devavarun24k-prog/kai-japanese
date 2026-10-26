@@ -94,76 +94,72 @@ export const HomeDashboard: React.FC = () => {
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#FAF7F2_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
+          <div className="space-y-3 max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-kai-gold font-mono text-xs border border-white/15">
               <Sparkles size={13} />
               <span>{profile.current_level}</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-bold font-serif_jp tracking-tight text-white">
-              おかえりなさい、{profile.display_name}！
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif_jp tracking-tight text-white flex items-center gap-2">
+              <span>Welcome back, {profile.display_name}!</span>
+              <span className="text-xs font-normal text-stone-300 font-sans hidden sm:inline">
+                (おかえり)
+              </span>
             </h1>
 
             <p className="text-sm text-stone-200 font-sans leading-relaxed">
               {displayMode === 'telugu' || displayMode === 'bilingual' ? (
                 <span className="font-telugu block text-stone-100 mb-1">
-                  జపనీస్ నేర్చుకోవడానికి, జపనీస్‌లో ఆలోచించడానికి సిద్ధంగా ఉండండి. నేటి లక్ష్యం ప్రారంభించండి!
+                  జపనీస్ నేర్చుకోవడానికి, సహజంగా ఆలోచించడానికి సిద్ధంగా ఉండండి. నేటి పాఠం ప్రారంభించండి!
                 </span>
               ) : null}
               <span>
-                Every stroke brings you closer to thinking naturally in Japanese. Complete today's mission to protect your streak.
+                Every small step brings you closer to thinking naturally in Japanese. Focus on today&apos;s routine to keep your streak alive.
               </span>
             </p>
 
+            {/* One Obvious Next Action and Key Quick Controls */}
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
                 onClick={startTodaysMission}
-                className="px-5 py-2.5 rounded-xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-semibold text-sm shadow-vermilion flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                className="px-6 py-3 rounded-2xl bg-kai-vermilion hover:bg-kai-vermilion-dark text-white font-bold text-sm shadow-lg shadow-kai-vermilion/30 flex items-center gap-2.5 transition-transform hover:scale-105 active:scale-95"
               >
-                <BookOpen size={16} />
-                <span>Next Lesson: {nextLesson.title}</span>
-                <ArrowRight size={15} />
+                <BookOpen size={17} />
+                <span>Continue: {nextLesson.title}</span>
+                <ArrowRight size={16} />
               </button>
 
               {stats.reviews_due_count > 0 && (
                 <button
                   onClick={() => setActiveSection('reviews')}
-                  className="px-4 py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-600 text-white font-medium text-sm backdrop-blur-sm transition-colors flex items-center gap-1.5"
+                  className="px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm backdrop-blur-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2 shadow-md"
                 >
-                  <Repeat size={14} />
+                  <Repeat size={15} />
                   <span>{stats.reviews_due_count} Reviews Due</span>
                 </button>
               )}
 
               <button
                 onClick={() => setActiveSection('planner')}
-                className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/20 text-white font-medium text-sm backdrop-blur-sm transition-colors border border-white/20 flex items-center gap-1.5"
+                className="px-4 py-3 rounded-2xl bg-white/15 hover:bg-white/20 text-white font-medium text-sm backdrop-blur-sm transition-colors border border-white/20 flex items-center gap-1.5"
               >
-                <CalendarDays size={14} />
-                <span>Study Planner</span>
-              </button>
-
-              <button
-                onClick={() => setActiveSection('landing')}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#B99A60]/30 to-[#B99A60]/10 hover:bg-[#B99A60]/40 text-[#F0E5CE] font-medium text-sm backdrop-blur-sm transition-all border border-[#B99A60]/40 flex items-center gap-1.5"
-                title="Enter Cinematic Illustrated Japan"
-              >
-                <Sparkles size={14} className="text-[#B99A60]" />
-                <span>界ワールド • World</span>
+                <CalendarDays size={15} />
+                <span>Study Routine</span>
               </button>
             </div>
           </div>
 
-          {/* Interactive Mascot with Speech */}
+          {/* Interactive Mascot with Contextual Encouraging Speech */}
           <div className="hidden sm:flex flex-col items-center">
             <MascotKai
-              mood={stats.reviews_due_count > 0 ? 'thinking' : 'cheerful'}
+              mood={stats.reviews_due_count > 0 ? 'thinking' : 'welcoming'}
               speechText={
                 stats.reviews_due_count > 0
-                  ? `You have ${stats.reviews_due_count} card(s) ready for review! Let's reinforce them!`
-                  : `Terrific progress! Ready for ${nextLesson.title}?`
+                  ? `You have ${stats.reviews_due_count} card(s) ready for review! A quick 3-min session keeps them fresh!`
+                  : `Terrific dedication! Ready to conquer ${nextLesson.title}?`
               }
               size="lg"
+              bubblePlacement="bottom"
             />
           </div>
         </div>
@@ -233,7 +229,7 @@ export const HomeDashboard: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Target size={18} className="text-kai-vermilion" />
                 <h2 className="text-base font-bold text-kai-ink dark:text-kai-dark-ink font-serif_jp">
-                  Today's Mastery Quests (今日のクエスト)
+                  Today&apos;s Study Quests (今日のクエスト)
                 </h2>
               </div>
               <span className="text-xs text-kai-muted font-mono">

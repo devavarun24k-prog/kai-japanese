@@ -5,3 +5,12 @@ dist-ssr
 .env
 .env.*.local
 .DS_Store
+release
+scratch
+android/.gradle
+android/build
+android/app/build
+android/.idea
+*.apk
+*.aab
+isolated_worktree

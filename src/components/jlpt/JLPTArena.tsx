@@ -16,12 +16,14 @@ import {
   BarChart2,
   Sparkles,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  ExternalLink
 } from 'lucide-react';
 import { JLPT_N5_MOCK_EXAM } from '../../data/jlptMockData';
 import { AudioButton } from '../common/AudioButton';
 import { useLearning } from '../../context/LearningContext';
 import { soundEffects } from '../../services/soundEffects';
+import { platformService } from '../../services/platformService';
 
 interface SectionScore {
   name: string;
@@ -536,6 +538,27 @@ export const JLPTArena: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Official JLPT Portal & Verification Notice */}
+          <div className="p-6 rounded-3xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold text-sm">
+                <Compass size={17} />
+                <span>Official JLPT Administration & Verification</span>
+              </div>
+              <button
+                onClick={() => platformService.openExternal('https://www.jlpt.jp/e/')}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-all shadow-sm"
+              >
+                <span>Visit Official JLPT Portal</span>
+                <ExternalLink size={12} />
+              </button>
+            </div>
+
+            <p className="text-2xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+              Official examination schedules, host institution registration windows, and test site availability are administered exclusively by Japan Educational Exchanges and Services (JEES) and the Japan Foundation. Registration windows vary by country and region. KAI does not schedule live official exams; always verify deadlines and test center locations directly on the official portal at <strong className="font-mono">https://www.jlpt.jp/e/</strong>.
+            </p>
           </div>
         </div>
       )}

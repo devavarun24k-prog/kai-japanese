@@ -1,6 +1,4 @@
-// src/components/common/Navbar.tsx
-// Header navigation with streak, XP, language switcher, and status indicators
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Flame,
   Volume2,
@@ -11,10 +9,17 @@ import {
   LogOut,
   Bell,
   Sparkles,
-  Repeat
+  Repeat,
+  WifiOff,
+  CloudUpload,
+  Minimize2,
+  Maximize2,
+  Compass
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLearning } from '../../context/LearningContext';
+import { platformService } from '../../services/platformService';
+import { storageService } from '../../services/storageService';
 
 interface NavbarProps {
   onOpenSettings?: () => void;
@@ -23,6 +28,29 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenAuth }) => {
   const { isAuthenticated, logout, profile } = useAuth();
+  const [isOnline, setIsOnline] = useState<boolean>(() => platformService.isOnline());
+  const [pendingSync, setPendingSync] = useState<number>(() => storageService.getPendingSyncCount());
+  const [isQuickPractice, setIsQuickPractice] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = platformService.onNetworkStatusChange((online) => {
+      setIsOnline(online);
+      if (online) {
+        storageService.flushOfflineSyncQueue().then((res) => {
+          setPendingSync(res.remaining);
+        });
+      }
+    });
+
+    const interval = setInterval(() => {
+      setPendingSync(storageService.getPendingSyncCount());
+    }, 5000);
+
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
+  }, []);
   const {
     stats,
     displayMode,
@@ -95,6 +123,41 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenAuth }) =>
 
         {/* Center / Right Stats & Toggles */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Offline / Sync State Indicator */}
+          {!isOnline ? (
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-2xs font-mono font-semibold"
+              title="Offline Mode: Progress is safely preserved in local storage and will automatically sync when reconnected"
+            >
+              <WifiOff size={13} className="text-amber-600" />
+              <span className="hidden md:inline">Offline (Local Active)</span>
+            </div>
+          ) : pendingSync > 0 ? (
+            <button
+              onClick={() => storageService.flushOfflineSyncQueue().then((r) => setPendingSync(r.remaining))}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-2xs font-mono font-semibold hover:bg-blue-100 transition-colors"
+              title={`${pendingSync} change(s) queued for cloud sync. Click to sync now.`}
+            >
+              <CloudUpload size={13} className="animate-pulse" />
+              <span>{pendingSync} to sync</span>
+            </button>
+          ) : null}
+
+          {/* Windows Desktop Quick Practice Mini-Window Toggle */}
+          {platformService.isElectron() && (
+            <button
+              onClick={() => {
+                const next = !isQuickPractice;
+                setIsQuickPractice(next);
+                platformService.toggleQuickPracticeMode(next);
+              }}
+              className="p-1.5 rounded-xl border border-kai-border text-kai-muted hover:text-kai-ink dark:hover:text-white transition-colors"
+              title={isQuickPractice ? 'Restore Full Learning Studio' : 'Toggle Compact Quick Practice Mini-Window'}
+            >
+              {isQuickPractice ? <Maximize2 size={15} /> : <Minimize2 size={15} />}
+            </button>
+          )}
+
           {/* Reviews Due Pill */}
           {stats.reviews_due_count > 0 && (
             <button
@@ -176,14 +239,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenAuth }) =>
             {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
           </button>
 
-          {/* Cinematic Experience Portal */}
+          {/* Welcome Guide / Introduction Portal */}
           <button
             onClick={() => setActiveSection('landing')}
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#101722] to-[#1A2638] text-[#F0E5CE] text-xs font-serif_jp shadow-sm hover:scale-105 active:scale-95 transition-all border border-[#B99A60]/40"
-            title="Experience Cinematic Illustrated Japan (界ワールド)"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100 dark:bg-[#1A2433] hover:bg-stone-200 dark:hover:bg-[#253245] text-kai-ink dark:text-[#F0E5CE] text-xs font-medium shadow-sm hover:scale-105 active:scale-95 transition-all border border-[#E5DEC9] dark:border-[#2D3A4F]"
+            title="Open Welcome Guide & Interactive Introduction"
           >
-            <Sparkles size={13} className="text-[#B99A60]" />
-            <span>界ワールド</span>
+            <Compass size={13} className="text-[#D9483B]" />
+            <span>Guide</span>
           </button>
 
           {/* Dark Mode Toggle */}

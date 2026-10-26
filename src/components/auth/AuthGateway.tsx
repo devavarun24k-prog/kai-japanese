@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { soundEffects } from '../../services/soundEffects';
+import { MascotKai } from '../common/MascotKai';
 
 interface AuthGatewayProps {
   onBackToLanding?: () => void;
@@ -196,7 +197,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding }) => 
   return (
     <div className="min-h-screen bg-kai-bg dark:bg-kai-dark-bg flex items-center justify-center p-4 sm:p-6 transition-colors duration-200">
       <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border dark:border-kai-dark-border shadow-2xl space-y-6 animate-in fade-in duration-300">
-        {/* Back to Cinematic Landing Page if accessible */}
+        {/* Back to Welcome Guide if accessible */}
         {onBackToLanding && (
           <div className="flex justify-start">
             <button
@@ -204,24 +205,34 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding }) => 
               onClick={onBackToLanding}
               className="inline-flex items-center gap-1.5 text-xs font-mono text-kai-muted hover:text-kai-vermilion transition-colors -mt-2 mb-1"
             >
-              <span>← 界ワールドへ戻る (Back to World)</span>
+              <span>← Back to Welcome Guide</span>
             </button>
           </div>
         )}
 
-        {/* Brand Crest & Title */}
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-kai-vermilion to-kai-vermilion-dark text-white flex items-center justify-center mx-auto shadow-vermilion">
-            <span className="font-serif_jp font-bold text-2xl tracking-wider">界</span>
+        {/* Brand Crest, Mascot & Title */}
+        <div className="text-center space-y-3">
+          <div className="flex justify-center">
+            <MascotKai
+              mood={isLoading ? 'thinking' : errorMsg ? 'reacting_to_mistake' : 'welcoming'}
+              speechText={
+                errorMsg
+                  ? 'Let’s check those details and try again!'
+                  : 'Welcome! Enter your credentials to unlock your learning sanctuary.'
+              }
+              size="sm"
+              bubblePlacement="bottom"
+            />
           </div>
 
-          <h1 className="text-2xl font-bold font-serif_jp text-kai-ink dark:text-kai-dark-ink">
-            KAI — 日本語マスター
-          </h1>
-
-          <p className="text-xs text-kai-muted font-sans leading-relaxed">
-            Personal Japanese Mastery Platform. Private single-user access control.
-          </p>
+          <div>
+            <h1 className="text-2xl font-bold font-serif_jp text-kai-ink dark:text-kai-dark-ink">
+              KAI — 日本語マスター
+            </h1>
+            <p className="text-xs text-kai-muted font-sans leading-relaxed mt-1">
+              Personal Japanese Mastery Platform. Private single-user access control.
+            </p>
+          </div>
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 dark:bg-kai-dark-bg text-3xs font-mono text-kai-muted">
             <ShieldCheck size={12} className="text-kai-green" />
