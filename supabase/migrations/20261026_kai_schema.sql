@@ -40,7 +40,7 @@ BEGIN
     ON CONFLICT (id) DO NOTHING;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -150,6 +150,19 @@ CREATE POLICY "Users can only view their own evidence files"
     ON storage.objects FOR SELECT
     TO authenticated
     USING (
+        bucket_id = 'kai-private-evidence' AND
+        (storage.foldername(name))[1] = auth.uid()::text
+    );
+
+DROP POLICY IF EXISTS "Users can only update their own evidence files" ON storage.objects;
+CREATE POLICY "Users can only update their own evidence files"
+    ON storage.objects FOR UPDATE
+    TO authenticated
+    USING (
+        bucket_id = 'kai-private-evidence' AND
+        (storage.foldername(name))[1] = auth.uid()::text
+    )
+    WITH CHECK (
         bucket_id = 'kai-private-evidence' AND
         (storage.foldername(name))[1] = auth.uid()::text
     );
