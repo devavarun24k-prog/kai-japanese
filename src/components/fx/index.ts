@@ -17,3 +17,5 @@ export type { SplitTextProps } from './SplitText';
 
 export { HankoStamp } from './HankoStamp';
 export type { HankoStampProps } from './HankoStamp';
+
+export { CustomCursor } from './CustomCursor';
