@@ -10,6 +10,7 @@ import { fsrsService } from '../services/fsrsService';
 export type ActiveSection =
   | 'landing'
   | 'dashboard'
+  | 'start_here'
   | 'kana'
   | 'vocab'
   | 'kanji'

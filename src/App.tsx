@@ -20,6 +20,7 @@ import { WashiTexture, Seigaiha } from './components/fx';
 
 // Core and Fast Modules
 import { HomeDashboard } from './components/dashboard/HomeDashboard';
+import { StartHerePath } from './components/startHere/StartHerePath';
 import { KanaAcademy } from './components/kana/KanaAcademy';
 import { VocabAcademy } from './components/vocab/VocabAcademy';
 import { GrammarLab } from './components/grammar/GrammarLab';
@@ -109,6 +110,8 @@ const AppContent: React.FC = () => {
         );
       case 'dashboard':
         return <HomeDashboard />;
+      case 'start_here':
+        return <StartHerePath />;
       case 'kana':
         return <KanaAcademy />;
       case 'vocab':
