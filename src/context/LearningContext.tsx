@@ -26,7 +26,8 @@ export type ActiveSection =
   | 'analytics'
   | 'planner'
   | 'jlpt'
-  | 'dictation';
+  | 'dictation'
+  | 'electronics';
 
 interface XPNotification {
   id: string;
@@ -72,8 +73,29 @@ interface LearningContextType {
 
 const LearningContext = createContext<LearningContextType | undefined>(undefined);
 
+const getInitialSection = (): ActiveSection => {
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    if (path === '/' || path === '' || path === '/landing' || hash === '#/' || hash === '#landing' || hash === '') {
+      return 'landing';
+    }
+    const cleanPath = path.replace(/^\//, '');
+    const validSections: ActiveSection[] = [
+      'landing', 'dashboard', 'start_here', 'kana', 'vocab', 'kanji',
+      'grammar', 'sentence', 'tutor', 'speaking', 'handwriting',
+      'listening', 'reading', 'rpg_games', 'reviews', 'analytics',
+      'planner', 'jlpt', 'dictation'
+    ];
+    if (validSections.includes(cleanPath as ActiveSection)) {
+      return cleanPath as ActiveSection;
+    }
+  }
+  return 'landing';
+};
+
 export const LearningProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeSection, setActiveSection] = useState<ActiveSection>('dashboard');
+  const [activeSection, setActiveSection] = useState<ActiveSection>(getInitialSection);
   const [stats, setStats] = useState<UserStats>(() => storageService.getStats());
   const [profile, setProfile] = useState(() => storageService.getProfile());
   const [displayMode, setDisplayModeState] = useState<DisplayMode>(profile.display_mode || 'bilingual');

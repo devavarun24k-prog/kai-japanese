@@ -24,6 +24,7 @@ import {
   Gamepad2,
   BarChart3,
   Award,
+  Cpu,
   ChevronDown,
   ChevronRight,
   Info
@@ -59,6 +60,7 @@ const LOCKED_MODULE_DEFS: LockedModuleDef[] = [
   { id: 'speaking', titleEn: 'Speaking Studio', titleJp: '発音スタジオ', icon: Mic, requiredStage: 4, stageName: 'Stage 4: First 50 Words' },
   { id: 'listening', titleEn: 'Listening Lab', titleJp: '聴解ラボ', icon: Headphones, requiredStage: 4, stageName: 'Stage 4: First 50 Words' },
   { id: 'dictation', titleEn: 'Dictation Studio', titleJp: '聴解 & 綴り', icon: Volume2, requiredStage: 2, stageName: 'Stage 2: Hiragana Rows' },
+  { id: 'electronics', titleEn: 'Electronics Lab', titleJp: '電子・半導体', icon: Cpu, requiredStage: 3, stageName: 'Stage 3: Katakana' },
   { id: 'reading', titleEn: 'Reading Theatre', titleJp: '読解劇場', icon: Scroll, requiredStage: 5, stageName: 'Stage 5: First Sentences' },
   { id: 'rpg_games', titleEn: 'Game Hub & RPG', titleJp: 'RPG道場', icon: Gamepad2, requiredStage: 2, stageName: 'Stage 2: Hiragana Rows' },
   { id: 'jlpt', titleEn: 'JLPT Prep Arena', titleJp: 'JLPT模擬', icon: Award, requiredStage: 7, stageName: 'Stage 7: N5 Foundation' },

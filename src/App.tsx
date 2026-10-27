@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LearningProvider, useLearning } from './context/LearningContext';
+import { LearningProvider, useLearning, ActiveSection } from './context/LearningContext';
 import { platformService } from './services/platformService';
 import { Navbar } from './components/common/Navbar';
 import { Sidebar } from './components/common/Sidebar';
@@ -40,6 +40,7 @@ const ReadingTheatre = React.lazy(() => import('./components/reading/ReadingThea
 const RPGGameHub = React.lazy(() => import('./components/games/RPGGameHub').then((m) => ({ default: m.RPGGameHub })));
 const JLPTArena = React.lazy(() => import('./components/jlpt/JLPTArena').then((m) => ({ default: m.JLPTArena })));
 const DictationStudio = React.lazy(() => import('./features/dictation/DictationStudio').then((m) => ({ default: m.DictationStudio })));
+const ElectronicsLab = React.lazy(() => import('./features/electronics/ElectronicsLab').then((m) => ({ default: m.ElectronicsLab })));
 
 const ModuleLoadingSkeleton: React.FC = () => (
   <div className="p-8 rounded-3xl bg-white/80 dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370] animate-pulse space-y-4 max-w-2xl mx-auto shadow-washi">
@@ -145,14 +146,69 @@ const AppContent: React.FC = () => {
         return <JLPTArena />;
       case 'dictation':
         return <DictationStudio />;
+      case 'electronics':
+        return <ElectronicsLab />;
       default:
         return <HomeDashboard />;
     }
   };
 
+  // URL Route Synchronization
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    return typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '/';
+  });
+
+  const isAuthRoute = (path: string, hash: string) => {
+    return (
+      path === '/signin' ||
+      path === '/login' ||
+      path === '/auth' ||
+      hash === '#/signin' ||
+      hash === '#/login' ||
+      hash === '#/auth'
+    );
+  };
+
+  const isLandingRoute = (path: string, hash: string) => {
+    return (
+      path === '/' ||
+      path === '' ||
+      path === '/landing' ||
+      hash === '#/' ||
+      hash === '#landing' ||
+      hash === '#/landing' ||
+      hash === ''
+    );
+  };
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      setCurrentPath(path);
+      if (isAuthRoute(path, hash)) {
+        setShowAuthGateway(true);
+      } else if (isLandingRoute(path, hash)) {
+        setShowAuthGateway(false);
+        setActiveSection('landing');
+      } else {
+        setShowAuthGateway(false);
+        const clean = path.replace(/^\//, '') as ActiveSection;
+        if (clean) setActiveSection(clean);
+      }
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, [setActiveSection]);
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F3EBDD] dark:bg-[#0A101C] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F3EBDD] dark:bg-[#07070C] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-kai-vermilion to-kai-vermilion-dark flex items-center justify-center text-white font-serif_jp font-bold text-xl shadow-vermilion animate-pulse">
             界
@@ -165,31 +221,42 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    if (showAuthGateway) {
-      return <AuthGateway onBackToLanding={() => setShowAuthGateway(false)} />;
-    }
+  const currentHash = typeof window !== 'undefined' ? window.location.hash.toLowerCase() : '';
+  const shouldRenderAuth = showAuthGateway || isAuthRoute(currentPath, currentHash);
+
+  // 1. Sign-In Gateway Route
+  if (shouldRenderAuth) {
     return (
-      <CinematicLandingPage
-        onEnterApp={(target) => {
-          if (target && target !== 'dashboard') {
-            setActiveSection(target);
+      <AuthGateway
+        onBackToLanding={() => {
+          setShowAuthGateway(false);
+          setActiveSection('landing');
+          if (window.location.pathname !== '/') {
+            window.history.pushState({}, '', '/');
           }
-          setShowAuthGateway(true);
         }}
-        onOpenAuth={() => setShowAuthGateway(true)}
-        isAuthenticated={false}
       />
     );
   }
 
-  // Full-screen Cinematic Experience for authenticated users when requested
-  if (activeSection === 'landing') {
+  // 2. Root '/' Landing Page & Signed-Out Route (Cinematic 3D Journey)
+  if (!isAuthenticated || activeSection === 'landing' || isLandingRoute(currentPath, currentHash)) {
     return (
       <CinematicLandingPage
-        onEnterApp={(target) => setActiveSection(target || 'dashboard')}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
-        isAuthenticated={true}
+        onEnterApp={(target) => {
+          if (!isAuthenticated) {
+            setShowAuthGateway(true);
+            window.history.pushState({}, '', '/signin');
+          } else {
+            setActiveSection(target || 'dashboard');
+            window.history.pushState({}, '', target ? `/${target}` : '/dashboard');
+          }
+        }}
+        onOpenAuth={() => {
+          setShowAuthGateway(true);
+          window.history.pushState({}, '', '/signin');
+        }}
+        isAuthenticated={isAuthenticated}
       />
     );
   }
