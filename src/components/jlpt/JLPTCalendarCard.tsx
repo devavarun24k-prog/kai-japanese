@@ -148,13 +148,21 @@ export const JLPTCalendarCard: React.FC = () => {
         </span>
       </div>
 
-      {/* Stale Data Warning (>60 days) */}
+      {/* Stale Data Warning (null or >60 days) */}
       {isStale && (
         <div className="relative z-10 p-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 text-3xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
           <AlertCircle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
           <p className="leading-snug">
-            <strong>Schedule Note:</strong> Verified schedule data is older than 60 days. Please verify opening dates at the official host institution.
+            <strong>Schedule Note:</strong> Verified schedule data is unconfirmed or older than 60 days. Please verify opening dates at the official host institution.
           </p>
+        </div>
+      )}
+
+      {/* Unverified Entry Alert */}
+      {currentEntry.unverified && (
+        <div className="relative z-10 p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-300 text-3xs text-orange-900 dark:text-orange-200 flex items-center gap-1.5 font-semibold">
+          <AlertCircle size={13} className="text-orange-600 flex-shrink-0" />
+          <span>Unverified, confirm on the official site</span>
         </div>
       )}
 
@@ -178,6 +186,11 @@ export const JLPTCalendarCard: React.FC = () => {
           <span className="text-xs font-bold font-mono text-[#14110F] dark:text-white">
             {currentEntry.examDate}
           </span>
+          {currentEntry.expected && (
+            <span className="text-4xs text-amber-700 dark:text-amber-400 block font-sans font-semibold mt-0.5">
+              Expected, confirm on the official site
+            </span>
+          )}
         </div>
         <div className="text-right">
           <span className="text-4xs font-mono uppercase text-[#6B6358] dark:text-[#94A3B8] block">

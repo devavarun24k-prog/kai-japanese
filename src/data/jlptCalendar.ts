@@ -1,8 +1,8 @@
 // src/data/jlptCalendar.ts
 // JLPT Official Exam Schedule, Cities, and Local Reminder Services
 // Contains officially scheduled sessions with verified dates.
-// Registration dates are set to null where not yet formally announced by the host institutions.
-// Includes a lastVerified timestamp to trigger stale-data warnings if older than 60 days.
+// Registration dates are set to null where not yet formally announced by host institutions.
+// Fallback official URL for every entry is https://www.jlpt.jp/e/
 
 export interface JLPTCalendarEntry {
   id: string;
@@ -16,8 +16,10 @@ export interface JLPTCalendarEntry {
   registrationOpens: string | null; // Nullable: do not invent unannounced dates
   registrationCloses: string | null; // Nullable
   officialUrl: string;
-  lastVerified: string; // YYYY-MM-DD
+  lastVerified: string | null; // Nullable: left null unless user confirms, showing stale warning
   notesEn: string;
+  unverified?: boolean; // For test centers requiring host confirmation (e.g. Hyderabad)
+  expected?: boolean; // For expected dates (e.g. July 2027)
 }
 
 export type JLPTUserStatus = 'not_planning' | 'planning' | 'applied';
@@ -31,7 +33,7 @@ export interface JLPTUserPreferences {
   updatedAt: string;
 }
 
-// Seed data with Dec 6, 2026 and July 2027 as officially expected JLPT test windows
+// Seed data with Dec 6, 2026 and July 2027 sessions across supported test centers
 export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
   // 1. December 6, 2026 (Global Test Session)
   {
@@ -43,11 +45,26 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     city: 'Tokyo',
     country: 'Japan',
     hostInstitution: 'Japan Educational Exchanges and Services (JEES)',
-    registrationOpens: null, // Officially expected, confirm on official site
+    registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.jlpt.jp',
-    lastVerified: '2026-10-15',
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
     notesEn: 'Expected date based on 1st Sunday of December schedule. Confirm on official JEES site.'
+  },
+  {
+    id: 'jlpt-2026-12-chennai',
+    session: '2026-12',
+    sessionNameEn: 'December 2026 Examination',
+    sessionNameJp: '2026年第2回 日本語能力試験',
+    examDate: '2026-12-06',
+    city: 'Chennai',
+    country: 'India',
+    hostInstitution: 'ABK-AOTS DOSOKAI, Tamilnadu Centre',
+    registrationOpens: null,
+    registrationCloses: null,
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    notesEn: 'Administered by ABK-AOTS DOSOKAI Tamilnadu Centre. Confirm dates on official site.'
   },
   {
     id: 'jlpt-2026-12-hyderabad',
@@ -60,9 +77,10 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'The English and Foreign Languages University (EFLU)',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.jlpt.jp',
-    lastVerified: '2026-10-15',
-    notesEn: 'Local test center in Hyderabad. Registration dates will be posted by the host institution.'
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    unverified: true,
+    notesEn: 'Unverified test center for this session. Confirm directly on the official JLPT site.'
   },
   {
     id: 'jlpt-2026-12-newdelhi',
@@ -75,8 +93,8 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'MOSAI (Mombusho Scholars Association of India)',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.mosai.org.in',
-    lastVerified: '2026-10-15',
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
     notesEn: 'Registration administered by MOSAI in North India.'
   },
   {
@@ -90,8 +108,8 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'Bangalore Nihongo Kyooshikai',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.jlpt.jp',
-    lastVerified: '2026-10-15',
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
     notesEn: 'South India official test administration center.'
   },
   {
@@ -105,8 +123,8 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'SOAS University of London',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.soas.ac.uk/jlpt',
-    lastVerified: '2026-10-15',
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
     notesEn: 'Administered at SOAS Russell Square campus.'
   },
   {
@@ -120,12 +138,12 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'Lehman College / Japan Society',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.aatj.org/jlpt',
-    lastVerified: '2026-10-15',
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
     notesEn: 'Administered by American Association of Teachers of Japanese (AATJ).'
   },
 
-  // 2. July 4, 2027 (Summer Test Session)
+  // 2. July 4, 2027 (Summer Test Session - Expected)
   {
     id: 'jlpt-2027-07-tokyo',
     session: '2027-07',
@@ -137,9 +155,26 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'Japan Educational Exchanges and Services (JEES)',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.jlpt.jp',
-    lastVerified: '2026-10-15',
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    expected: true,
     notesEn: 'Expected date based on 1st Sunday of July schedule. Registration window usually opens March.'
+  },
+  {
+    id: 'jlpt-2027-07-chennai',
+    session: '2027-07',
+    sessionNameEn: 'July 2027 Examination',
+    sessionNameJp: '2027年第1回 日本語能力試験',
+    examDate: '2027-07-04',
+    city: 'Chennai',
+    country: 'India',
+    hostInstitution: 'ABK-AOTS DOSOKAI, Tamilnadu Centre',
+    registrationOpens: null,
+    registrationCloses: null,
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    expected: true,
+    notesEn: 'Expected date based on 1st Sunday of July schedule. Confirm on official site.'
   },
   {
     id: 'jlpt-2027-07-hyderabad',
@@ -152,9 +187,11 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'The English and Foreign Languages University (EFLU)',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.jlpt.jp',
-    lastVerified: '2026-10-15',
-    notesEn: 'Summer session administration.'
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    unverified: true,
+    expected: true,
+    notesEn: 'Unverified test center for summer session. Confirm directly on the official JLPT site.'
   },
   {
     id: 'jlpt-2027-07-newdelhi',
@@ -167,9 +204,58 @@ export const JLPT_CALENDAR_ENTRIES: JLPTCalendarEntry[] = [
     hostInstitution: 'MOSAI',
     registrationOpens: null,
     registrationCloses: null,
-    officialUrl: 'https://www.mosai.org.in',
-    lastVerified: '2026-10-15',
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    expected: true,
     notesEn: 'Summer session administration by MOSAI.'
+  },
+  {
+    id: 'jlpt-2027-07-bengaluru',
+    session: '2027-07',
+    sessionNameEn: 'July 2027 Examination',
+    sessionNameJp: '2027年第1回 日本語能力試験',
+    examDate: '2027-07-04',
+    city: 'Bengaluru',
+    country: 'India',
+    hostInstitution: 'Bangalore Nihongo Kyooshikai',
+    registrationOpens: null,
+    registrationCloses: null,
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    expected: true,
+    notesEn: 'Summer session administration in Bengaluru.'
+  },
+  {
+    id: 'jlpt-2027-07-london',
+    session: '2027-07',
+    sessionNameEn: 'July 2027 Examination',
+    sessionNameJp: '2027年第1回 日本語能力試験',
+    examDate: '2027-07-04',
+    city: 'London',
+    country: 'United Kingdom',
+    hostInstitution: 'SOAS University of London',
+    registrationOpens: null,
+    registrationCloses: null,
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    expected: true,
+    notesEn: 'Summer session administration at SOAS.'
+  },
+  {
+    id: 'jlpt-2027-07-newyork',
+    session: '2027-07',
+    sessionNameEn: 'July 2027 Examination',
+    sessionNameJp: '2027年第1回 日本語能力試験',
+    examDate: '2027-07-04',
+    city: 'New York',
+    country: 'United States',
+    hostInstitution: 'Lehman College / Japan Society',
+    registrationOpens: null,
+    registrationCloses: null,
+    officialUrl: 'https://www.jlpt.jp/e/',
+    lastVerified: null,
+    expected: true,
+    notesEn: 'Summer session administration by AATJ.'
   }
 ];
 
@@ -181,8 +267,9 @@ export const AVAILABLE_SESSIONS = Array.from(
   new Set(JLPT_CALENDAR_ENTRIES.map((e) => e.session))
 ).sort();
 
-// Check if verification date is older than 60 days
-export const isCalendarDataStale = (lastVerifiedIso: string): boolean => {
+// Check if verification date is missing or older than 60 days
+export const isCalendarDataStale = (lastVerifiedIso: string | null): boolean => {
+  if (!lastVerifiedIso) return true; // Unverified or unconfirmed data triggers stale warning
   const verified = new Date(lastVerifiedIso).getTime();
   const now = Date.now();
   const diffDays = (now - verified) / (1000 * 60 * 60 * 24);
