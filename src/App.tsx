@@ -43,6 +43,7 @@ const DictationStudio = React.lazy(() => import('./features/dictation/DictationS
 const ElectronicsLab = React.lazy(() => import('./features/electronics/ElectronicsLab').then((m) => ({ default: m.ElectronicsLab })));
 const InterviewArena = React.lazy(() => import('./features/interview/InterviewArena').then((m) => ({ default: m.InterviewArena })));
 const CareerStudio = React.lazy(() => import('./features/career/CareerStudio').then((m) => ({ default: m.CareerStudio })));
+const JobTracker = React.lazy(() => import('./features/jobs/JobTracker').then((m) => ({ default: m.JobTracker })));
 
 const ModuleLoadingSkeleton: React.FC = () => (
   <div className="p-8 rounded-3xl bg-white/80 dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370] animate-pulse space-y-4 max-w-2xl mx-auto shadow-washi">
@@ -154,6 +155,8 @@ const AppContent: React.FC = () => {
         return <InterviewArena />;
       case 'career':
         return <CareerStudio />;
+      case 'jobs':
+        return <JobTracker />;
       default:
         return <HomeDashboard />;
     }
@@ -182,8 +185,7 @@ const AppContent: React.FC = () => {
       path === '/landing' ||
       hash === '#/' ||
       hash === '#landing' ||
-      hash === '#/landing' ||
-      hash === ''
+      hash === '#/landing'
     );
   };
 
@@ -196,7 +198,13 @@ const AppContent: React.FC = () => {
         setShowAuthGateway(true);
       } else if (isLandingRoute(path, hash)) {
         setShowAuthGateway(false);
-        setActiveSection('landing');
+        if (!isAuthenticated) {
+          setActiveSection('landing');
+        } else {
+          setActiveSection('dashboard');
+          setCurrentPath('/dashboard');
+          window.history.replaceState({}, '', '/dashboard');
+        }
       } else {
         setShowAuthGateway(false);
         const clean = path.replace(/^\//, '') as ActiveSection;
@@ -210,22 +218,38 @@ const AppContent: React.FC = () => {
       window.removeEventListener('popstate', handleLocationChange);
       window.removeEventListener('hashchange', handleLocationChange);
     };
-  }, [setActiveSection]);
+  }, [isAuthenticated, setActiveSection]);
 
-  // Effect: When authenticated, immediately redirect away from /signin, /login, /auth to /dashboard
+  // Effect 1: When user is authenticated, redirect away from /signin, /login, /auth, / or /landing to /dashboard
   useEffect(() => {
-    if (isAuthenticated) {
-      const path = window.location.pathname.toLowerCase();
-      const hash = window.location.hash.toLowerCase();
-      if (isAuthRoute(path, hash) || showAuthGateway) {
+    if (!isLoading && isAuthenticated) {
+      const path = (typeof window !== 'undefined' ? window.location.pathname : currentPath).toLowerCase();
+      const hash = (typeof window !== 'undefined' ? window.location.hash : '').toLowerCase();
+      if (isAuthRoute(path, hash) || isLandingRoute(path, hash) || showAuthGateway || activeSection === 'landing') {
         setShowAuthGateway(false);
         setActiveSection('dashboard');
+        setCurrentPath('/dashboard');
         if (typeof window !== 'undefined' && window.location.pathname !== '/dashboard') {
           window.history.replaceState({}, '', '/dashboard');
         }
       }
     }
-  }, [isAuthenticated, showAuthGateway, setActiveSection]);
+  }, [isLoading, isAuthenticated, showAuthGateway, activeSection, currentPath, setActiveSection]);
+
+  // Effect 2: When user is NOT authenticated, opening /dashboard (or any protected section) redirects to /signin
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      const path = (typeof window !== 'undefined' ? window.location.pathname : currentPath).toLowerCase();
+      const hash = (typeof window !== 'undefined' ? window.location.hash : '').toLowerCase();
+      if (!isLandingRoute(path, hash) && !isAuthRoute(path, hash)) {
+        setShowAuthGateway(true);
+        setCurrentPath('/signin');
+        if (typeof window !== 'undefined' && window.location.pathname !== '/signin') {
+          window.history.replaceState({}, '', '/signin');
+        }
+      }
+    }
+  }, [isLoading, isAuthenticated, currentPath]);
 
   if (isLoading) {
     return (
@@ -244,55 +268,74 @@ const AppContent: React.FC = () => {
 
   const currentHash = typeof window !== 'undefined' ? window.location.hash.toLowerCase() : '';
   const isAuth = isAuthRoute(currentPath, currentHash);
+  const isLanding = isLandingRoute(currentPath, currentHash);
 
-  // 1. Sign-In Gateway Route
-  // If user is ALREADY authenticated and opens /signin, /login, or /auth, redirect to /dashboard immediately
-  if (isAuth || showAuthGateway) {
-    if (isAuthenticated) {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/dashboard') {
-        window.history.replaceState({}, '', '/dashboard');
-      }
-      // Do not render AuthGateway for authenticated user. Continue to dashboard/module below.
-    } else {
-      return (
-        <AuthGateway
-          onBackToLanding={() => {
-            setShowAuthGateway(false);
-            setActiveSection('landing');
-            if (window.location.pathname !== '/') {
-              window.history.pushState({}, '', '/');
-            }
-          }}
-          onSuccess={() => {
-            setShowAuthGateway(false);
-            setActiveSection('dashboard');
-            if (window.location.pathname !== '/dashboard') {
-              window.history.replaceState({}, '', '/dashboard');
-            }
-          }}
-        />
-      );
-    }
-  }
-
-  // 2. Root '/' Landing Page & Signed-Out Route (Cinematic 3D Journey)
-  if (!isAuthenticated || activeSection === 'landing' || isLandingRoute(currentPath, currentHash)) {
+  // 1. Signed-in user view: Render App Shell with Dashboard / Modules
+  if (isAuthenticated) {
+    // If user is authenticated, fall through to main layout below
+  } else if (isAuth || showAuthGateway) {
+    // 2. Unauthenticated user on /signin, /login, /auth
+    return (
+      <AuthGateway
+        onBackToLanding={() => {
+          setShowAuthGateway(false);
+          setActiveSection('landing');
+          setCurrentPath('/');
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.history.pushState({}, '', '/');
+          }
+        }}
+        onSuccess={() => {
+          setShowAuthGateway(false);
+          setActiveSection('dashboard');
+          setCurrentPath('/dashboard');
+          if (typeof window !== 'undefined' && window.location.pathname !== '/dashboard') {
+            window.history.replaceState({}, '', '/dashboard');
+          }
+        }}
+      />
+    );
+  } else if (isLanding) {
+    // 3. Unauthenticated user on '/' or '/landing' (Cinematic Landing Page)
     return (
       <CinematicLandingPage
         onEnterApp={(target) => {
-          if (!isAuthenticated) {
-            setShowAuthGateway(true);
+          setShowAuthGateway(true);
+          setCurrentPath('/signin');
+          if (typeof window !== 'undefined') {
             window.history.pushState({}, '', '/signin');
-          } else {
-            setActiveSection(target || 'dashboard');
-            window.history.pushState({}, '', target ? `/${target}` : '/dashboard');
           }
         }}
         onOpenAuth={() => {
           setShowAuthGateway(true);
-          window.history.pushState({}, '', '/signin');
+          setCurrentPath('/signin');
+          if (typeof window !== 'undefined') {
+            window.history.pushState({}, '', '/signin');
+          }
         }}
-        isAuthenticated={isAuthenticated}
+        isAuthenticated={false}
+      />
+    );
+  } else {
+    // 4. Unauthenticated user on any protected route -> Auth Gateway with redirect to /signin
+    return (
+      <AuthGateway
+        onBackToLanding={() => {
+          setShowAuthGateway(false);
+          setActiveSection('landing');
+          setCurrentPath('/');
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.history.pushState({}, '', '/');
+          }
+        }}
+        onSuccess={() => {
+          setShowAuthGateway(false);
+          setActiveSection('dashboard');
+          setCurrentPath('/dashboard');
+          if (typeof window !== 'undefined' && window.location.pathname !== '/dashboard') {
+            window.history.replaceState({}, '', '/dashboard');
+          }
+        }}
       />
     );
   }

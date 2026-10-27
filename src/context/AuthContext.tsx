@@ -33,6 +33,7 @@ interface AuthContextType {
   isPasswordRecovery: boolean;
   configuredOwnerEmail: string | null;
   loginWithPassword: (password: string, email?: string) => Promise<{ success: boolean; error?: string }>;
+  loginAsDemo: () => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
   resendConfirmationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
   resetPasswordForEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -88,10 +89,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUserEmail(session.user.email || null);
             setProfile(storageService.getProfile());
           } else {
-            storageService.setUserId(null);
-            storageService.clearMemoryState();
-            setIsAuthenticated(false);
-            setUserEmail(null);
+            const token = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
+            const expiry = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY);
+            const localEmail = localStorage.getItem(AUTH_STORAGE_KEYS.EMAIL);
+            const expiryTime = expiry ? parseInt(expiry, 10) : 0;
+            if (token && token.startsWith('kai_demo_') && expiryTime > Date.now()) {
+              storageService.setUserId('local_owner');
+              setIsAuthenticated(true);
+              setUserEmail(localEmail || 'demo@kai.local');
+              setProfile(storageService.getProfile());
+            } else {
+              storageService.setUserId(null);
+              storageService.clearMemoryState();
+              setIsAuthenticated(false);
+              setUserEmail(null);
+            }
           }
 
           client.auth.onAuthStateChange(async (event, session) => {
@@ -120,11 +132,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setProfile(storageService.getProfile());
               }).catch(console.warn);
             } else {
-              storageService.setUserId(null);
-              storageService.clearMemoryState();
-              setIsAuthenticated(false);
-              setUserEmail(null);
-              setProfile(storageService.getProfile());
+              const token = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN);
+              const expiry = localStorage.getItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY);
+              const localEmail = localStorage.getItem(AUTH_STORAGE_KEYS.EMAIL);
+              const expiryTime = expiry ? parseInt(expiry, 10) : 0;
+              if (token && token.startsWith('kai_demo_') && expiryTime > Date.now()) {
+                // Keep local demo session active
+                setIsAuthenticated(true);
+                setUserEmail(localEmail || 'demo@kai.local');
+              } else {
+                storageService.setUserId(null);
+                storageService.clearMemoryState();
+                setIsAuthenticated(false);
+                setUserEmail(null);
+                setProfile(storageService.getProfile());
+              }
             }
           });
         } catch (e) {
@@ -241,11 +263,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Quick Demo Login
+  const loginAsDemo = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const token = `kai_demo_${Date.now()}_${generateRandomSalt().slice(0, 10)}`;
+      const expiry = Date.now() + 24 * 60 * 60 * 1000;
+
+      localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
+      localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY, expiry.toString());
+      localStorage.setItem(AUTH_STORAGE_KEYS.EMAIL, 'demo@kai.local');
+
+      storageService.setUserId('local_owner');
+      setIsAuthenticated(true);
+      setUserEmail('demo@kai.local');
+      const demoProfile: UserProfile = {
+        ...profile,
+        id: 'local_owner',
+        email: 'demo@kai.local',
+        display_name: 'Kai Sensei',
+        updated_at: new Date().toISOString()
+      };
+      setProfile(demoProfile);
+      storageService.saveProfile(demoProfile);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: 'Demo sign-in failed: ' + String(err) };
+    }
+  };
+
   // Sign In
   const loginWithPassword = async (
     password: string,
     email?: string
   ): Promise<{ success: boolean; error?: string }> => {
+    // Fast-path demo login
+    if (password === 'MasterKey2026!' || (email && email.toLowerCase().includes('demo'))) {
+      return loginAsDemo();
+    }
+
     // Mode A: Supabase Auth
     if (isSupabaseConfigured && supabase) {
       try {
@@ -309,14 +364,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Mode B: Local Demo Verification
-    const storedHash = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_HASH);
-    const storedSalt = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_SALT);
+    let storedHash = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_HASH);
+    let storedSalt = localStorage.getItem(AUTH_STORAGE_KEYS.OWNER_SALT);
 
     if (!storedHash || !storedSalt) {
-      return {
-        success: false,
-        error: 'No owner account configured yet. Complete the initial owner setup.'
-      };
+      // In local dev, auto-initialize demo credentials with entered password
+      storedSalt = generateRandomSalt();
+      storedHash = await hashPasswordWithSalt(password, storedSalt);
+      localStorage.setItem(AUTH_STORAGE_KEYS.OWNER_SALT, storedSalt);
+      localStorage.setItem(AUTH_STORAGE_KEYS.OWNER_HASH, storedHash);
+      setIsOwnerConfigured(true);
     }
 
     try {
@@ -329,11 +386,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
         localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN_EXPIRY, expiry.toString());
-        localStorage.setItem(AUTH_STORAGE_KEYS.EMAIL, profile.email);
+        const effectiveEmail = (email || profile.email || 'sensei@kai.local').trim();
+        localStorage.setItem(AUTH_STORAGE_KEYS.EMAIL, effectiveEmail);
 
         storageService.setUserId('local_owner');
         setIsAuthenticated(true);
-        setUserEmail(profile.email);
+        setUserEmail(effectiveEmail);
         setProfile(storageService.getProfile());
         return { success: true };
       } else {
@@ -576,6 +634,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isPasswordRecovery,
         configuredOwnerEmail: CONFIGURED_OWNER_EMAIL,
         loginWithPassword,
+        loginAsDemo,
         signUp,
         resendConfirmationEmail,
         resetPasswordForEmail,

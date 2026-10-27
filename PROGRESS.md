@@ -11,7 +11,7 @@
 | **Phase 3b: Engineering Fundamentals Track** | Completed | Digital Electronics + Semiconductor Manufacturing Basics: 6 typed lesson modules, 24 quiz questions with explanations and draft disclaimers, 4 interactive pure SVG/React simulations (Ohm's Law, RC Charging, Logic Gates, 8-Step Wafer Process), weak-topic detection and targeted drill remediation. |
 | **Phase 4: Interview Arena** | Completed | Tech interview simulation (60 questions across 8 domains), deterministic rubric scoring, timed mock interview with weak-area diagnostics, Japanese workplace mode (7 cards, templates without hallucinated info), Web Speech recognition & fallback, safe Supabase Edge Function AI feedback. |
 | **Phase 5: Career Studio** | Completed | Unified editable profile source of truth, era converter (Showa/Heisei/Reiwa with exact boundaries), MHLW gender-free 履歴書, standard & project-based 職務経歴書, English CV & One-Page Resume, A4 print styles, consistency warnings, document versioning, deterministic JD keyword tailoring, template gallery, safe AI polish modal. |
-| **Phase 6: Job Tracker** | Planned | Japan tech job pipeline, visa sponsorship tracking, JLPT requirement tags. |
+| **Phase 6: Job Tracker** | Completed | Manual-first job application pipeline, tri-state visa verification with ISA Japan link, status audit history, list & Kanban board views, live deadline countdowns, in-app reminders & Android notifications, RFC 5545 iCalendar (.ics) export, verified sources page with 60-day freshness checks, legitimate API documentation (`docs/JOB_FEEDS.md`), and Supabase RLS migration (`supabase/migrations/20261027_job_tracker_rls.sql`). |
 | **Phase 7: Career Roadmap** | Planned | Milestone ladder from beginner to Tokyo tech hire, milestone gates, timeline estimator. |
 
 ---
@@ -26,7 +26,7 @@
 
 ---
 
-## Active Phase: Phase 6 (Job Tracker)
+## Active Phase: Phase 7 (Career Roadmap)
 
 ### Dictation Studio Fix-ups (Completed)
 - [x] 1. Deferred evaluation in Screen Mode: no correct/incorrect or target spelling shown until whole session is submitted. Navigating and editing earlier answers is fully enabled.
@@ -90,3 +90,19 @@
 - [x] Business communication template gallery (`TemplateGalleryModal.tsx`): 10 editable templates across 5 categories in English and Japanese, placeholder blank filling (unfilled blanks stay visible), and "Needs native review" badges on Japanese templates.
 - [x] Navigation: Integrated under route `'career'` in `Sidebar.tsx`, `CommandPalette.tsx`, and code-split in `App.tsx`.
 - [x] Vitest test suite (`src/tests/career.test.ts`) with 15 comprehensive unit tests (219 total passing tests across 18 test suites).
+
+### Phase 6 - Job Tracker (Completed)
+- [x] Step 1 - Sidebar grouping: Grouped items into three collapsible headings ("Japanese", "Engineering", "Career") with persistent collapsed/expanded state in `localStorage` (`kai_sidebar_groups_state`). All existing lock/unlock behavior preserved.
+- [x] Manual-Add Pipeline: Zero web scraping, zero fabricated listings, zero synthetic seed vacancies.
+- [x] Full Job Form (`AddJobModal.tsx`): Employer, title, location (prefecture/remote), required source URL, official application URL, posted date, deadline, salary & benefits (free text / "Not stated"), qualifications, technical skills, Japanese level requirement, English requirement, experience requirement, work arrangement.
+- [x] Tri-State Verification: Overseas applicants accepted, relocation support, and visa sponsorship strictly default to `"unknown"` with optional citation notes.
+- [x] Official Immigration Disclaimer: Neutral advisory note that KAI cannot determine visa qualification, with link to the Immigration Services Agency of Japan (`https://www.isa.go.jp/en/`).
+- [x] Status Pipeline & Audit History: `interested`, `planned`, `applied`, `interview_scheduled`, `offer_received`, `rejected`, `closed` with timestamped change history, follow-up dates, notes, and attached Career Studio document versions.
+- [x] Views: Filterable list view (`JobListView.tsx`) and mobile-friendly status-chip Kanban board view (`JobBoardView.tsx`).
+- [x] Dashboard & Deadlines: Status counts, applications this week, live countdowns (`JobDashboardSummary.tsx`), and in-app banners for 7/3/1 days before deadlines and follow-up dates.
+- [x] Calendar Reminders: RFC 5545 `.ics` export with `VEVENT` and `VALARM` (`calendarGenerator.ts`) and Android local notifications through `platformService`.
+- [x] Duplicate Detection: Warning banner when a source URL or portal URL is already tracked.
+- [x] Verified Sources Page (`VerifiedSourcesView.tsx`): User-curated official career pages with 60-day freshness auditing.
+- [x] Permitted Feed Architecture: Documented in `docs/JOB_FEEDS.md` for authorized partner APIs, open data, and opt-in ATS webhooks.
+- [x] Backend Persistence & Security: User-scoped storage + Supabase RLS migration script (`supabase/migrations/20261027_job_tracker_rls.sql`).
+- [x] Vitest test suite (`src/tests/jobs.test.ts`) with 10 comprehensive unit tests (229 total passing tests across 19 test suites).

@@ -43,6 +43,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
     isPasswordRecovery,
     configuredOwnerEmail,
     loginWithPassword,
+    loginAsDemo,
     signUp,
     resendConfirmationEmail,
     resetPasswordForEmail,
@@ -143,14 +144,13 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
     try {
       setTimeout(() => {
         setIsGateOpening(true);
-      }, 350);
+      }, 200);
     } catch {}
 
-    // Hard failsafe: navigation to dashboard MUST happen after ~1100ms regardless of animations
-    // Fixes issue where "THRESHOLD GRANTED • OPENING GATE" gets stuck without navigating
+    // Hard failsafe: navigation to dashboard MUST happen after 800ms regardless of animations
     setTimeout(() => {
       navigateToDashboard();
-    }, 1100);
+    }, 800);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,6 +160,12 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
     setIsLoading(true);
 
     try {
+      if (isProductionMode && !isSupabaseMode) {
+        setIsLoading(false);
+        triggerErrorShake('Auth not configured: Missing VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in production.');
+        return;
+      }
+
       if (mode === 'setup') {
         if (password !== confirmPassword) {
           setIsLoading(false);
@@ -172,6 +178,8 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
         if (res.success) {
           executeSuccessTransition();
         } else {
+          setIsSuccessStamp(false);
+          setIsGateOpening(false);
           triggerErrorShake(res.error || 'Failed to setup master owner credentials.');
         }
       } else if (mode === 'signin') {
@@ -186,6 +194,8 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
         if (res.success) {
           executeSuccessTransition();
         } else {
+          setIsSuccessStamp(false);
+          setIsGateOpening(false);
           triggerErrorShake(res.error || 'Incorrect authentication credentials.');
         }
       } else if (mode === 'signup') {
@@ -204,12 +214,17 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
         const res = await signUp(email, password, displayName);
         setIsLoading(false);
         if (res.success) {
-          executeSuccessTransition();
           if (res.error) {
+            // Notice: email confirmation required — do NOT navigate to dashboard
             setSuccessNotice(res.error);
             setMode('signin');
+          } else {
+            // Immediate active session
+            executeSuccessTransition();
           }
         } else {
+          setIsSuccessStamp(false);
+          setIsGateOpening(false);
           triggerErrorShake(res.error || 'Registration failed.');
         }
       } else if (mode === 'forgot') {
@@ -421,10 +436,10 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
               <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 space-y-2 text-xs mb-5">
                 <div className="flex items-center gap-2 text-amber-200 font-bold">
                   <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />
-                  <span>Production Setup Required</span>
+                  <span>Auth not configured</span>
                 </div>
                 <p className="text-2xs text-stone-300 leading-relaxed font-serif_jp">
-                  To guarantee single-owner data isolation and PostgreSQL Row Level Security, KAI requires Supabase Auth in production builds.
+                  Auth not configured: Missing VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel environment variables.
                 </p>
               </div>
             ) : (
@@ -670,6 +685,27 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
                             <ArrowRight size={15} />
                           </span>
                         )}
+                      </button>
+                    )}
+
+                    {/* Quick Demo Mode option */}
+                    {!isSuccessStamp && mode === 'signin' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setIsLoading(true);
+                          const res = await loginAsDemo();
+                          setIsLoading(false);
+                          if (res.success) {
+                            executeSuccessTransition();
+                          } else {
+                            triggerErrorShake(res.error || 'Demo sign in failed.');
+                          }
+                        }}
+                        className="w-full mt-3 py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#F4C26B]/50 text-stone-300 hover:text-white font-mono text-xs transition-all flex items-center justify-center gap-2"
+                      >
+                        <span>Try Demo Mode (デモ体験)</span>
+                        <span className="text-2xs text-[#F4C26B] font-mono">• No password required</span>
                       </button>
                     )}
                   </div>

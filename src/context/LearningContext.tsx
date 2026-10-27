@@ -29,7 +29,8 @@ export type ActiveSection =
   | 'dictation'
   | 'electronics'
   | 'interview'
-  | 'career';
+  | 'career'
+  | 'jobs';
 
 interface XPNotification {
   id: string;
@@ -79,7 +80,7 @@ const getInitialSection = (): ActiveSection => {
   if (typeof window !== 'undefined') {
     const path = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
-    if (path === '/' || path === '' || path === '/landing' || hash === '#/' || hash === '#landing' || hash === '') {
+    if (path === '/' || path === '' || path === '/landing' || hash === '#/' || hash === '#landing' || hash === '#/landing') {
       return 'landing';
     }
     const cleanPath = path.replace(/^\//, '');
@@ -87,7 +88,7 @@ const getInitialSection = (): ActiveSection => {
       'landing', 'dashboard', 'start_here', 'kana', 'vocab', 'kanji',
       'grammar', 'sentence', 'tutor', 'speaking', 'handwriting',
       'listening', 'reading', 'rpg_games', 'reviews', 'analytics',
-      'planner', 'jlpt', 'dictation'
+      'planner', 'jlpt', 'dictation', 'electronics', 'interview', 'career'
     ];
     if (validSections.includes(cleanPath as ActiveSection)) {
       return cleanPath as ActiveSection;
