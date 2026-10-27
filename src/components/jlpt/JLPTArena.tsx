@@ -240,7 +240,7 @@ export const JLPTArena: React.FC = () => {
 
     setSectionBreakdown(sectionsScored);
 
-    const totalPct = Math.round((totalCorrect / activeQuestions.length) * 100);
+    const totalPct = activeQuestions.length > 0 ? Math.round((totalCorrect / activeQuestions.length) * 100) : 0;
     const passed = totalPct >= JLPT_N5_MOCK_EXAM.passing_score_pct;
 
     setScoreReport({
@@ -328,11 +328,28 @@ export const JLPTArena: React.FC = () => {
           </div>
 
           {examStarted && !examSubmitted && activeTab === 'arena' && (
-            <div className="flex items-center gap-2 font-mono font-bold text-sm text-kai-vermilion bg-red-50 dark:bg-red-950/40 px-3.5 py-1.5 rounded-2xl border border-red-200 shrink-0">
-              <Timer size={16} />
-              <span>
-                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 font-mono font-bold text-sm text-kai-vermilion bg-red-50 dark:bg-red-950/40 px-3.5 py-1.5 rounded-2xl border border-red-200 shrink-0">
+                <Timer size={16} />
+                <span>
+                  {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Exit mock exam? Current attempt progress will be discarded.')) {
+                    setExamStarted(false);
+                    setExamSubmitted(false);
+                    setAnswers({});
+                    setTimeLeft(JLPT_N5_MOCK_EXAM.time_limit_minutes * 60);
+                    setScoreReport(null);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl border border-kai-border hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold text-kai-muted hover:text-kai-ink transition-colors"
+              >
+                Exit Mock
+              </button>
             </div>
           )}
         </div>
@@ -360,16 +377,28 @@ export const JLPTArena: React.FC = () => {
         <div className="space-y-6">
           {/* Section 1: Goal Selection Card */}
           <div className="p-6 rounded-3xl bg-white dark:bg-kai-dark-card border border-kai-border shadow-washi space-y-5">
-            <div className="flex items-center justify-between border-b border-kai-border/50 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-kai-border/50 pb-3 gap-2">
               <div className="flex items-center gap-2">
                 <Target size={18} className="text-kai-vermilion" />
                 <h2 className="text-base font-bold font-serif_jp text-kai-ink dark:text-kai-dark-ink">
                   JLPT Target Goal Selection
                 </h2>
               </div>
-              <span className="text-2xs font-mono text-kai-muted">
-                {selectedEntry.city} • {selectedEntry.examDate}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-2xs font-mono text-kai-muted">
+                  {selectedEntry.city} • {selectedEntry.examDate}
+                </span>
+                {selectedEntry.expected && (
+                  <span className="text-3xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                    Expected, confirm on the official site
+                  </span>
+                )}
+                {selectedEntry.unverified && (
+                  <span className="text-3xs font-mono font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300">
+                    Unverified, confirm on the official site
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -479,8 +508,9 @@ export const JLPTArena: React.FC = () => {
 
               <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-kai-dark-bg/60 border border-kai-border">
                 <span className="text-2xs font-mono text-kai-muted uppercase block">Benchmark Need</span>
-                <span className="font-bold text-lg font-mono text-kai-ink dark:text-white">
-                  {requiredHours} Hours
+                <span className="font-bold text-lg font-mono text-kai-ink dark:text-white flex items-center gap-1.5 flex-wrap">
+                  <span>{requiredHours} Hours</span>
+                  <span className="text-3xs font-sans font-normal text-kai-muted">(Rough estimate, varies by learner)</span>
                 </span>
                 <span className="text-3xs text-kai-muted block mt-0.5">{preferences.targetLevel} standard</span>
               </div>
@@ -504,8 +534,8 @@ export const JLPTArena: React.FC = () => {
               </div>
               <p className="text-2xs text-kai-muted leading-relaxed">
                 {feasibilityRatio >= 1.0
-                  ? `At your current pace of ${dailyGoalMinutes} min/day, you will accumulate ~${projectedStudyHours} study hours by ${selectedEntry.examDate}, comfortably meeting the ${requiredHours}-hour milestone for ${preferences.targetLevel}.`
-                  : `At ${dailyGoalMinutes} min/day, you will log ~${projectedStudyHours} hours vs. the recommended ${requiredHours} hours. Consider increasing your daily goal to ~${Math.ceil(
+                  ? `At your current pace of ${dailyGoalMinutes} min/day, you will accumulate ~${projectedStudyHours} study hours by ${selectedEntry.examDate}, comfortably meeting the ${requiredHours}-hour milestone (Rough estimate, varies by learner) for ${preferences.targetLevel}.`
+                  : `At ${dailyGoalMinutes} min/day, you will log ~${projectedStudyHours} hours vs. the recommended ${requiredHours} hours (Rough estimate, varies by learner). Consider increasing your daily goal to ~${Math.ceil(
                       (requiredHours * 60) / Math.max(1, daysUntilExam)
                     )} min/day in the Study Planner.`}
               </p>
