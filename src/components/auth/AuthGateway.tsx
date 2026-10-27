@@ -147,6 +147,7 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuc
     } catch {}
 
     // Hard failsafe: navigation to dashboard MUST happen after ~1100ms regardless of animations
+    // Fixes issue where "THRESHOLD GRANTED • OPENING GATE" gets stuck without navigating
     setTimeout(() => {
       navigateToDashboard();
     }, 1100);
