@@ -23,6 +23,7 @@ import {
   Compass
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useLearning } from '../../context/LearningContext';
 import { soundEffects } from '../../services/soundEffects';
 import { CinematicScene } from '../three/CinematicScene';
 import { MascotKai } from '../common/MascotKai';
@@ -30,9 +31,11 @@ import { HankoStamp } from '../fx';
 
 export interface AuthGatewayProps {
   onBackToLanding?: () => void;
+  onSuccess?: () => void;
 }
 
-export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding }) => {
+export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding, onSuccess }) => {
+  const { setActiveSection } = useLearning();
   const {
     isSupabaseMode,
     isProductionMode,
@@ -84,10 +87,35 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding }) => 
     }
   }, [isPasswordRecovery]);
 
+  const hasNavigatedRef = React.useRef(false);
+
+  const navigateToDashboard = React.useCallback(() => {
+    if (hasNavigatedRef.current) return;
+    hasNavigatedRef.current = true;
+    try {
+      setActiveSection('dashboard');
+    } catch {}
+    try {
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch {}
+    try {
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', '/dashboard');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    } catch {}
+  }, [onSuccess, setActiveSection]);
+
   const triggerErrorShake = (message: string) => {
+    setIsSuccessStamp(false);
+    setIsGateOpening(false);
     setErrorMsg(message);
     setShakeKey((prev) => prev + 1);
-    soundEffects.playWrong();
+    try {
+      soundEffects.playWrong();
+    } catch {}
   };
 
   const handleResendEmail = async () => {
@@ -107,11 +135,21 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding }) => 
   };
 
   const executeSuccessTransition = () => {
-    setIsSuccessStamp(true);
-    soundEffects.playLevelUp();
+    try {
+      setIsSuccessStamp(true);
+      soundEffects.playLevelUp();
+    } catch {}
+
+    try {
+      setTimeout(() => {
+        setIsGateOpening(true);
+      }, 350);
+    } catch {}
+
+    // Hard failsafe: navigation to dashboard MUST happen after ~1100ms regardless of animations
     setTimeout(() => {
-      setIsGateOpening(true);
-    }, 450);
+      navigateToDashboard();
+    }, 1100);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -237,7 +275,8 @@ export const AuthGateway: React.FC<AuthGatewayProps> = ({ onBackToLanding }) => 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
+            onAnimationComplete={() => navigateToDashboard()}
             className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-radial from-amber-200/40 via-[#E63946]/30 to-[#07070C]"
           >
             {/* Split Torii Gates Swinging Open */}

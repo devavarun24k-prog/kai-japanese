@@ -26,6 +26,7 @@ import {
   Award,
   Cpu,
   Briefcase,
+  FileText,
   ChevronDown,
   ChevronRight,
   Info
@@ -63,6 +64,7 @@ const LOCKED_MODULE_DEFS: LockedModuleDef[] = [
   { id: 'dictation', titleEn: 'Dictation Studio', titleJp: '聴解 & 綴り', icon: Volume2, requiredStage: 2, stageName: 'Stage 2: Hiragana Rows' },
   { id: 'electronics', titleEn: 'Electronics Lab', titleJp: '電子・半導体', icon: Cpu, requiredStage: 0, stageName: '' },
   { id: 'interview', titleEn: 'Interview Arena', titleJp: '面接道場', icon: Briefcase, requiredStage: 0, stageName: '' },
+  { id: 'career', titleEn: 'Career Studio', titleJp: '就職・履歴書', icon: FileText, requiredStage: 0, stageName: '' },
   { id: 'reading', titleEn: 'Reading Theatre', titleJp: '読解劇場', icon: Scroll, requiredStage: 5, stageName: 'Stage 5: First Sentences' },
   { id: 'rpg_games', titleEn: 'Game Hub & RPG', titleJp: 'RPG道場', icon: Gamepad2, requiredStage: 2, stageName: 'Stage 2: Hiragana Rows' },
   { id: 'jlpt', titleEn: 'JLPT Prep Arena', titleJp: 'JLPT模擬', icon: Award, requiredStage: 7, stageName: 'Stage 7: N5 Foundation' },

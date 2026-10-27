@@ -33,3 +33,7 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
       },
     })
   : null;
+
+if (typeof window !== 'undefined') {
+  (window as unknown as { supabase?: SupabaseClient | null }).supabase = supabase;
+}

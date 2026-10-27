@@ -28,7 +28,8 @@ export type ActiveSection =
   | 'jlpt'
   | 'dictation'
   | 'electronics'
-  | 'interview';
+  | 'interview'
+  | 'career';
 
 interface XPNotification {
   id: string;
