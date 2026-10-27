@@ -39,6 +39,7 @@ const ListeningLab = React.lazy(() => import('./components/listening/ListeningLa
 const ReadingTheatre = React.lazy(() => import('./components/reading/ReadingTheatre').then((m) => ({ default: m.ReadingTheatre })));
 const RPGGameHub = React.lazy(() => import('./components/games/RPGGameHub').then((m) => ({ default: m.RPGGameHub })));
 const JLPTArena = React.lazy(() => import('./components/jlpt/JLPTArena').then((m) => ({ default: m.JLPTArena })));
+const DictationStudio = React.lazy(() => import('./features/dictation/DictationStudio').then((m) => ({ default: m.DictationStudio })));
 
 const ModuleLoadingSkeleton: React.FC = () => (
   <div className="p-8 rounded-3xl bg-white/80 dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370] animate-pulse space-y-4 max-w-2xl mx-auto shadow-washi">
@@ -142,6 +143,8 @@ const AppContent: React.FC = () => {
         return <StudyPlanner />;
       case 'jlpt':
         return <JLPTArena />;
+      case 'dictation':
+        return <DictationStudio />;
       default:
         return <HomeDashboard />;
     }

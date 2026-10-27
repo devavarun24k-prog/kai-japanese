@@ -25,7 +25,8 @@ export type ActiveSection =
   | 'reviews'
   | 'analytics'
   | 'planner'
-  | 'jlpt';
+  | 'jlpt'
+  | 'dictation';
 
 interface XPNotification {
   id: string;

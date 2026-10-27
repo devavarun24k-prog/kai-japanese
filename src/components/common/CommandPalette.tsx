@@ -23,6 +23,7 @@ import {
   Repeat,
   BarChart3,
   Award,
+  Volume2,
   Bot,
   Compass,
   ArrowRight
@@ -49,6 +50,7 @@ const COMMAND_ITEMS: CommandItem[] = [
   { id: 'sentence', titleEn: 'Sentence Forge', titleJp: '文鍛冶', category: 'Practice Studios', icon: Layers, keywords: 'syntax builder sov order structure' },
   { id: 'speaking', titleEn: 'Speaking Studio', titleJp: '発音スタジオ', category: 'Practice Studios', icon: Mic, keywords: 'voice mic shadowing pitch accent speech recognition' },
   { id: 'listening', titleEn: 'Listening Lab', titleJp: '聴解ラボ', category: 'Practice Studios', icon: Headphones, keywords: 'audio listening comprehension fast natural' },
+  { id: 'dictation', titleEn: 'Dictation Studio (Audio Spelling)', titleJp: '聴解 & 綴り道場', category: 'Practice Studios', icon: Volume2, keywords: 'dictation audio spelling hearing kana paper screen moras' },
   { id: 'reading', titleEn: 'Reading Theatre', titleJp: '読解劇場', category: 'Practice Studios', icon: Scroll, keywords: 'stories passages dialogues reading' },
   { id: 'handwriting', titleEn: 'Handwriting & OCR Studio', titleJp: '手書き解析', category: 'Practice Studios', icon: PenTool, keywords: 'canvas draw stroke recognition tesseract' },
   { id: 'rpg_games', titleEn: 'Arcade Hub & 10 RPG Games', titleJp: 'RPG道場', category: 'Arcade & RPG', icon: Gamepad2, keywords: 'minigames shinkansen kanji match boss battle' },
