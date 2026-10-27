@@ -23,7 +23,17 @@ export type ElectronicsTab = 'japanese' | 'fundamentals' | 'simulations';
 export type SimulationSubTab = 'ohm' | 'rc' | 'logic' | 'wafer';
 
 export const ElectronicsLab: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ElectronicsTab>('japanese');
+  const isKanaDone = React.useMemo(() => {
+    try {
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('kai_start_here_completed_stages') : null;
+      const stages: string[] = saved ? JSON.parse(saved) : [];
+      return stages.includes('stage_3_katakana') || stages.includes('stage_2_hiragana_rows');
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const [activeTab, setActiveTab] = useState<ElectronicsTab>(() => (isKanaDone ? 'japanese' : 'fundamentals'));
   const [simSubTab, setSimSubTab] = useState<SimulationSubTab>('ohm');
 
   return (
@@ -111,7 +121,40 @@ export const ElectronicsLab: React.FC = () => {
       {/* TAB 1: TECHNICAL JAPANESE */}
       {activeTab === 'japanese' && (
         <div className="space-y-4">
-          <TechnicalVocabDeck />
+          {!isKanaDone ? (
+            <div className="p-8 rounded-3xl bg-white/95 dark:bg-[#101726]/95 border-2 border-dashed border-[#DDD2B8] dark:border-[#253659] text-center space-y-4 max-w-xl mx-auto shadow-washi">
+              <div className="w-14 h-14 rounded-2xl bg-[#84231D]/10 text-[#84231D] dark:text-[#FF8A80] border border-[#84231D]/20 flex items-center justify-center mx-auto text-2xl font-serif_jp font-bold">
+                鍵
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-serif_jp font-bold text-[#14110F] dark:text-[#F3EBDD]">
+                  Technical Japanese Deck Locked
+                </h3>
+                <p className="text-xs text-[#6B6358] dark:text-[#94A3B8] leading-relaxed">
+                  Complete the fundamental Kana stages (Stage 2: Hiragana or Stage 3: Katakana) in <strong>Start Here</strong> to unlock the 80 technical vocabulary flashcards.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
+                ⚡ <strong>Engineering Fundamentals</strong> and <strong>Simulations</strong> are fully unlocked and available right now!
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => setActiveTab('fundamentals')}
+                  className="px-4 py-2 rounded-xl bg-[#84231D] text-white text-xs font-semibold shadow-sm hover:bg-[#6e1c17] transition-all"
+                >
+                  Explore Fundamentals Lessons
+                </button>
+                <button
+                  onClick={() => setActiveTab('simulations')}
+                  className="px-4 py-2 rounded-xl border border-[#DDD2B8] dark:border-[#253659] text-xs font-mono hover:bg-stone-100 dark:hover:bg-[#1A253D] transition-all"
+                >
+                  Try Circuit Simulators
+                </button>
+              </div>
+            </div>
+          ) : (
+            <TechnicalVocabDeck />
+          )}
         </div>
       )}
 

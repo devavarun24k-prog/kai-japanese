@@ -14,5 +14,8 @@ export default defineConfig({
     watch: {
       ignored: ['**/release/**', '**/android/**', '**/dist/**', '**/scratch/**']
     }
+  },
+  optimizeDeps: {
+    entries: ['index.html', 'src/**/*.{ts,tsx}']
   }
 });

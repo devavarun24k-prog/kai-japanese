@@ -78,9 +78,11 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Noto Sans', 'sans-serif'],
-        japanese: ['"Noto Sans JP"', '"Hiragino Kaku Gothic ProN"', '"Yu Gothic"', 'sans-serif'],
-        serif_jp: ['"Noto Serif JP"', '"Yu Mincho"', 'serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Noto Sans', 'sans-serif'],
+        japanese: ['"Zen Kaku Gothic New"', '"Noto Sans JP"', '"Hiragino Kaku Gothic ProN"', '"Yu Gothic"', 'sans-serif'],
+        serif_jp: ['"Shippori Mincho"', '"Noto Serif JP"', '"Yu Mincho"', 'serif'],
+        shippori: ['"Shippori Mincho"', '"Noto Serif JP"', 'serif'],
+        zen: ['"Zen Kaku Gothic New"', '"Noto Sans JP"', 'sans-serif'],
         telugu: ['"Noto Sans Telugu"', 'Gautami', 'sans-serif'],
       },
       boxShadow: {

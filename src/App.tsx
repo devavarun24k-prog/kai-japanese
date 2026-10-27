@@ -41,6 +41,7 @@ const RPGGameHub = React.lazy(() => import('./components/games/RPGGameHub').then
 const JLPTArena = React.lazy(() => import('./components/jlpt/JLPTArena').then((m) => ({ default: m.JLPTArena })));
 const DictationStudio = React.lazy(() => import('./features/dictation/DictationStudio').then((m) => ({ default: m.DictationStudio })));
 const ElectronicsLab = React.lazy(() => import('./features/electronics/ElectronicsLab').then((m) => ({ default: m.ElectronicsLab })));
+const InterviewArena = React.lazy(() => import('./features/interview/InterviewArena').then((m) => ({ default: m.InterviewArena })));
 
 const ModuleLoadingSkeleton: React.FC = () => (
   <div className="p-8 rounded-3xl bg-white/80 dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370] animate-pulse space-y-4 max-w-2xl mx-auto shadow-washi">
@@ -148,6 +149,8 @@ const AppContent: React.FC = () => {
         return <DictationStudio />;
       case 'electronics':
         return <ElectronicsLab />;
+      case 'interview':
+        return <InterviewArena />;
       default:
         return <HomeDashboard />;
     }
