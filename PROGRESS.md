@@ -4,9 +4,9 @@
 
 | Phase / Module | Status | Description |
 |---|---|---|
-| **Phase 0: Architecture & Read-Only Audit** | In Progress | Audit existing codebase (`AUDIT.md`), construct roadmap (`PLAN.md`), record top 10 architectural findings. |
-| **Phase 1: Learning Progress Model & Vocab Schema** | Next | Distinct character mastery vs. vocab knowledge; pure eligibility engine (`src/features/dictation/eligibility.ts`); ~150 kana-only N5 vocab entries with Telugu verification tracking; Vitest tests. |
-| **Phase 2: Dictation Studio** | Planned | Dictation setup, Audio Engine state machine with watchdog timer, Screen Mode kana keyboard, Paper Mode self-check, FSRS result integration. |
+| **Phase 0: Architecture & Read-Only Audit** | Completed | Audited codebase (`AUDIT.md`), created roadmap (`PLAN.md`), verified top 10 architectural findings. |
+| **Phase 1: Learning Progress Model & Vocab Schema** | Completed | Distinct character mastery vs. vocab knowledge; pure eligibility engine (`src/features/dictation/eligibility.ts`); 150 kana-only N5 vocab entries with Telugu verification tracking; 30 Vitest tests. |
+| **Phase 2: Dictation Studio** | In Progress | Dictation setup, Audio Engine state machine with watchdog timer, Screen Mode kana keyboard, Paper Mode self-check, FSRS result integration. |
 | **Phase 3: Electronics Lab** | Planned | Technical Japanese for electronics/semiconductor engineers, component Kanji, circuit schematics, lab dialogue. |
 | **Phase 4: Interview Arena** | Planned | Tech interview simulation, self-intro (Jikoshoukai), keigo honorifics, speech evaluation. |
 | **Phase 5: Career Studio** | Planned | Japanese Rirekisho & Shokumukeirekisho resume builders, tech email templates. |
@@ -15,22 +15,20 @@
 
 ---
 
-## Active Phase: Phase 0 (Read-Only Audit)
+## Active Phase: Phase 2 (Dictation Studio)
 
-- [x] Check git status and branch integrity.
-- [x] Audit application routes, contexts, services, and Supabase database schema.
-- [x] Audit speech/audio synthesis and recognition engines.
-- [x] Audit FSRS spaced repetition and legacy progress structures.
-- [x] Verify test suite health (131 tests currently passing).
-- [ ] Write comprehensive `AUDIT.md`.
-- [ ] Write modular multi-phase `PLAN.md`.
-- [ ] Present Top 10 architectural findings to user.
-- [ ] Run build, lint, and tests; commit Phase 0 artifacts.
-
----
-
-## Next Steps
-
-1. Complete `AUDIT.md` and `PLAN.md`.
-2. Commit Phase 0 files (`PROGRESS.md`, `AUDIT.md`, `PLAN.md`).
-3. Proceed to Phase 1: Implement Learning Progress Model (`src/features/learning/`, `src/features/dictation/eligibility.ts`, `src/data/vocab/`).
+- [x] Defined character mastery types (`src/features/learning/types.ts`).
+- [x] Implemented character mastery store & legacy FSRS migration (`src/features/learning/characterMastery.ts`).
+- [x] Defined vocabulary schema with Telugu verification tracking (`src/data/vocab/types.ts`).
+- [x] Built curated 150 kana-only N5 words dataset with Telugu unreviewed tracking (`src/data/vocab/n5KanaWords.ts`, split across parts 1-3).
+- [x] Created audit utility for unreviewed Telugu items (`src/data/vocab/reportUnverified.ts`).
+- [x] Implemented pure eligibility & selection functions (`src/features/dictation/eligibility.ts`).
+- [x] Built dev-only debug view for learned set & pool verification (`src/features/dictation/debug/LearnedSetDebugger.tsx`).
+- [x] Added 30 new unit tests covering eligibility, youon/sokuon/chouon splitting, shortage explanation, FSRS weighting, and non-destructive migration (all 161 tests passing).
+- [ ] Implement Dictation Audio Engine state machine with single-channel audio and 6s watchdog timer (`src/features/dictation/audioEngine.ts`).
+- [ ] Build Dictation Setup Screen with live pool size & shortage explanation (`src/features/dictation/DictationSetup.tsx`).
+- [ ] Build Screen Mode with custom Kana keyboard (`src/features/dictation/DictationScreenMode.tsx`, `KanaKeyboard.tsx`).
+- [ ] Build Paper Mode with self-check FSRS rating (`src/features/dictation/DictationPaperMode.tsx`).
+- [ ] Build Results view with XP reward and FSRS card sync (`src/features/dictation/DictationResults.tsx`).
+- [ ] Integrate Dictation Studio into app routing (`LearningContext.tsx`, `App.tsx`, `Sidebar.tsx`).
+- [ ] Run build, lint, and tests. Commit Phase 2.

@@ -1,0 +1,1040 @@
+// src/data/vocab/n5WordsPart3.ts
+// Part 3: Curated N5 words for dictation training (Items 101-150)
+import { DictationVocabItem } from './types';
+
+export const N5_WORDS_PART_3: DictationVocabItem[] = [
+  {
+    id: 'd_genki',
+    kana: 'げんき',
+    kanji: '元気',
+    romaji: 'genki',
+    meaningEn: 'Healthy / Energetic / Well',
+    meaningTe: 'ఆరోగ్యంగా / ఉత్సాహంగా',
+    teluguVerified: false,
+    teluguPron: 'గెంకి',
+    englishPron: 'gen-kee',
+    level: 'N5',
+    tags: ['adjectives', 'na-adj'],
+    example: {
+      ja: 'おげんき ですか。',
+      kana: 'おげんき ですか。',
+      romaji: 'Ogenki desu ka.',
+      en: 'How are you? / Are you well?',
+      te: 'మీరు ఎలా ఉన్నారు? బాగున్నారా?',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_hima',
+    kana: 'ひま',
+    kanji: '暇',
+    romaji: 'hima',
+    meaningEn: 'Free time / Not busy',
+    meaningTe: 'తీరిక / ఖాళీ సమయం',
+    teluguVerified: false,
+    teluguPron: 'హిమ',
+    englishPron: 'hee-mah',
+    level: 'N5',
+    tags: ['adjectives', 'na-adj'],
+    example: {
+      ja: 'あした ひま ですか。',
+      kana: 'あした ひま ですか。',
+      romaji: 'Ashita hima desu ka.',
+      en: 'Are you free tomorrow?',
+      te: 'రేపు మీకు ఖాళీ ఉందా?',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_jouzu',
+    kana: 'じょうず',
+    kanji: '上手',
+    romaji: 'jouzu',
+    meaningEn: 'Good at / Skillful',
+    meaningTe: 'నైపుణ్యం కల / నేర్పరి',
+    teluguVerified: false,
+    teluguPron: 'జోజు',
+    englishPron: 'joh-zoo',
+    level: 'N5',
+    tags: ['adjectives', 'na-adj'],
+    example: {
+      ja: 'にほんごが じょうず ですね。',
+      kana: 'にほんごが じょうず ですね。',
+      romaji: 'Nihongo ga jouzu desu ne.',
+      en: 'You are very good at Japanese!',
+      te: 'మీరు జపనీస్ చాలా బాగా మాట్లాడుతున్నారు!',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_heta',
+    kana: 'へた',
+    kanji: '下手',
+    romaji: 'heta',
+    meaningEn: 'Bad at / Unskillful',
+    meaningTe: 'నైపుణ్యం లేని',
+    teluguVerified: false,
+    teluguPron: 'హెత',
+    englishPron: 'heh-tah',
+    level: 'N5',
+    tags: ['adjectives', 'na-adj'],
+    example: {
+      ja: 'うたが へた です。',
+      kana: 'うたが へた です。',
+      romaji: 'Uta ga heta desu.',
+      en: 'I am bad at singing.',
+      te: 'నాకు పాట పాడటం సరిగ్గా రాదు.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_ue',
+    kana: 'うえ',
+    kanji: '上',
+    romaji: 'ue',
+    meaningEn: 'Up / Above / On top',
+    meaningTe: 'పైన',
+    teluguVerified: false,
+    teluguPron: 'ఉయె',
+    englishPron: 'oo-eh',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'テーブルの うえに あります。',
+      kana: 'テーブルの うえに あります。',
+      romaji: 'Teeburu no ue ni arimasu.',
+      en: 'It is on top of the table.',
+      te: 'అది టేబుల్ పైన ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_shita',
+    kana: 'した',
+    kanji: '下',
+    romaji: 'shita',
+    meaningEn: 'Under / Below / Beneath',
+    meaningTe: 'క్రింద',
+    teluguVerified: false,
+    teluguPron: 'షిత',
+    englishPron: 'shee-tah',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'ベッドの したに ねこが います。',
+      kana: 'ベッドの したに ねこが います。',
+      romaji: 'Beddo no shita ni neko ga imasu.',
+      en: 'There is a cat under the bed.',
+      te: 'మంచం క్రింద పిల్లి ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_mae',
+    kana: 'まえ',
+    kanji: '前',
+    romaji: 'mae',
+    meaningEn: 'Front / Before',
+    meaningTe: 'ముందు',
+    teluguVerified: false,
+    teluguPron: 'మయె',
+    englishPron: 'mah-eh',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'えきの まえで あいましょう。',
+      kana: 'えきの まえで あいましょう。',
+      romaji: 'Eki no mae de aimashou.',
+      en: 'Let us meet in front of the station.',
+      te: 'స్టేషన్ ముందు కలుద్దాం.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_ushiro',
+    kana: 'うしろ',
+    kanji: '後ろ',
+    romaji: 'ushiro',
+    meaningEn: 'Back / Behind',
+    meaningTe: 'వెనుక',
+    teluguVerified: false,
+    teluguPron: 'ఉషిరొ',
+    englishPron: 'oo-shee-roh',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'わたしの うしろに だれか います。',
+      kana: 'わたしの うしろに だれか います。',
+      romaji: 'Watashi no ushiro ni dareka imasu.',
+      en: 'Someone is behind me.',
+      te: 'నా వెనుక ఎవరో ఉన్నారు.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_migi',
+    kana: 'みぎ',
+    kanji: '右',
+    romaji: 'migi',
+    meaningEn: 'Right (side)',
+    meaningTe: 'కుడి వైపు',
+    teluguVerified: false,
+    teluguPron: 'మిగి',
+    englishPron: 'mee-gee',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'みぎへ まがって ください。',
+      kana: 'みぎへ まがって ください。',
+      romaji: 'Migi e magatte kudasai.',
+      en: 'Please turn to the right.',
+      te: 'దయచేసి కుడి వైపుకు తిరగండి.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_hidari',
+    kana: 'ひだり',
+    kanji: '左',
+    romaji: 'hidari',
+    meaningEn: 'Left (side)',
+    meaningTe: 'ఎడమ వైపు',
+    teluguVerified: false,
+    teluguPron: 'హిదరి',
+    englishPron: 'hee-dah-ree',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'ひだりに ぎんこうが あります。',
+      kana: 'ひだりに ぎんこうが あります。',
+      romaji: 'Hidari ni ginkou ga arimasu.',
+      en: 'There is a bank on the left.',
+      te: 'ఎడమ వైపున బ్యాంకు ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_naka',
+    kana: 'なか',
+    kanji: '中',
+    romaji: 'naka',
+    meaningEn: 'Inside / Middle',
+    meaningTe: 'లోపల',
+    teluguVerified: false,
+    teluguPron: 'నక',
+    englishPron: 'nah-kah',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'はこの なかに なにが ありますか。',
+      kana: 'はこの なかに なにが ありますか。',
+      romaji: 'Hako no naka ni nani ga arimasu ka.',
+      en: 'What is inside the box?',
+      te: 'పెట్టె లోపల ఏముంది?',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_soto',
+    kana: 'そと',
+    kanji: '外',
+    romaji: 'soto',
+    meaningEn: 'Outside',
+    meaningTe: 'బయట',
+    teluguVerified: false,
+    teluguPron: 'సొతొ',
+    englishPron: 'soh-toh',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'そとは さむい です。',
+      kana: 'そとは さむい です。',
+      romaji: 'Soto wa samui desu.',
+      en: 'It is cold outside.',
+      te: 'బయట చల్లగా ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_tonari',
+    kana: 'となり',
+    kanji: '隣',
+    romaji: 'tonari',
+    meaningEn: 'Next to / Neighboring',
+    meaningTe: 'పక్కన',
+    teluguVerified: false,
+    teluguPron: 'తొనరి',
+    englishPron: 'toh-nah-ree',
+    level: 'N5',
+    tags: ['position', 'noun'],
+    example: {
+      ja: 'えきの となりに コンビニが あります。',
+      kana: 'えきの となりに コンビニが あります。',
+      romaji: 'Eki no tonari ni konbini ga arimasu.',
+      en: 'There is a convenience store next to the station.',
+      te: 'స్టేషన్ పక్కనే దుకాణం ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_chikai',
+    kana: 'ちかい',
+    kanji: '近い',
+    romaji: 'chikai',
+    meaningEn: 'Near / Close',
+    meaningTe: 'దగ్గరగా',
+    teluguVerified: false,
+    teluguPron: 'చికై',
+    englishPron: 'chee-kah-ee',
+    level: 'N5',
+    tags: ['adjectives', 'i-adj'],
+    example: {
+      ja: 'がっこうは うちから ちかい です。',
+      kana: 'がっこうは うちから ちかい です。',
+      romaji: 'Gakkou wa uchi kara chikai desu.',
+      en: 'The school is close to home.',
+      te: 'పాఠశాల మా ఇంటికి దగ్గరగా ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_tooi',
+    kana: 'とおい',
+    kanji: '遠い',
+    romaji: 'tooi',
+    meaningEn: 'Far / Distant',
+    meaningTe: 'దూరంగా',
+    teluguVerified: false,
+    teluguPron: 'తోయి',
+    englishPron: 'toh-oh-ee',
+    level: 'N5',
+    tags: ['adjectives', 'i-adj'],
+    example: {
+      ja: 'えきは ここから とおい です。',
+      kana: 'えきは ここから とおい です。',
+      romaji: 'Eki wa koko kara tooi desu.',
+      en: 'The station is far from here.',
+      te: 'స్టేషన్ ఇక్కడి నుండి చాలా దూరంగా ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_hayai_fast',
+    kana: 'はやい',
+    kanji: '速い',
+    romaji: 'hayai',
+    meaningEn: 'Fast / Quick',
+    meaningTe: 'వేగంగా',
+    teluguVerified: false,
+    teluguPron: 'హయై',
+    englishPron: 'hah-yah-ee',
+    level: 'N5',
+    tags: ['adjectives', 'i-adj'],
+    example: {
+      ja: 'しんかんせんは はやい です。',
+      kana: 'しんかんせんは はやい です。',
+      romaji: 'Shinkansen wa hayai desu.',
+      en: 'The bullet train is fast.',
+      te: 'బుల్లెట్ రైలు చాలా వేగంగా వెళ్తుంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_osoi',
+    kana: 'おそい',
+    kanji: '遅い',
+    romaji: 'osoi',
+    meaningEn: 'Slow / Late',
+    meaningTe: 'నెమ్మదిగా / ఆలస్యంగా',
+    teluguVerified: false,
+    teluguPron: 'ఒసొయి',
+    englishPron: 'oh-soh-ee',
+    level: 'N5',
+    tags: ['adjectives', 'i-adj'],
+    example: {
+      ja: 'あしが おそい です。',
+      kana: 'あしが おそい です。',
+      romaji: 'Ashi ga osoi desu.',
+      en: 'I walk / run slowly.',
+      te: 'నేను నెమ్మదిగా నడుస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_akai',
+    kana: 'あかい',
+    kanji: '赤い',
+    romaji: 'akai',
+    meaningEn: 'Red',
+    meaningTe: 'ఎరుపు',
+    teluguVerified: false,
+    teluguPron: 'అకై',
+    englishPron: 'ah-kah-ee',
+    level: 'N5',
+    tags: ['colors', 'adjectives'],
+    example: {
+      ja: 'あかい りんごを かいました。',
+      kana: 'あかい りんごを かいました。',
+      romaji: 'Akai ringo o kaimashita.',
+      en: 'I bought red apples.',
+      te: 'నేను ఎర్రటి ఆపిల్స్ కొన్నాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_aoi',
+    kana: 'あおい',
+    kanji: '青い',
+    romaji: 'aoi',
+    meaningEn: 'Blue',
+    meaningTe: 'నీలం',
+    teluguVerified: false,
+    teluguPron: 'అఒయి',
+    englishPron: 'ah-oh-ee',
+    level: 'N5',
+    tags: ['colors', 'adjectives'],
+    example: {
+      ja: 'あおい うみが みえます。',
+      kana: 'あおい うみが みえます。',
+      romaji: 'Aoi umi ga miemasu.',
+      en: 'I can see the blue sea.',
+      te: 'నీలి సముద్రం కనిపిస్తోంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_shiroi',
+    kana: 'しろい',
+    kanji: '白い',
+    romaji: 'shiroi',
+    meaningEn: 'White',
+    meaningTe: 'తెలుపు',
+    teluguVerified: false,
+    teluguPron: 'శిరొయి',
+    englishPron: 'shee-roh-ee',
+    level: 'N5',
+    tags: ['colors', 'adjectives'],
+    example: {
+      ja: 'しろい ねこが います。',
+      kana: 'しろい ねこが います。',
+      romaji: 'Shiroi neko ga imasu.',
+      en: 'There is a white cat.',
+      te: 'అక్కడ ఒక తెల్ల పిల్లి ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kuroi',
+    kana: 'くろい',
+    kanji: '黒い',
+    romaji: 'kuroi',
+    meaningEn: 'Black',
+    meaningTe: 'నలుపు',
+    teluguVerified: false,
+    teluguPron: 'కురొయి',
+    englishPron: 'koo-roh-ee',
+    level: 'N5',
+    tags: ['colors', 'adjectives'],
+    example: {
+      ja: 'くろい かばんを もっています。',
+      kana: 'くろい かばんを もっています。',
+      romaji: 'Kuroi kaban o motte imasu.',
+      en: 'I have a black bag.',
+      te: 'నా దగ్గర నల్లటి బ్యాగ్ ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kiiroi',
+    kana: 'きいろい',
+    kanji: '黄色い',
+    romaji: 'kiiroi',
+    meaningEn: 'Yellow',
+    meaningTe: 'పసుపు',
+    teluguVerified: false,
+    teluguPron: 'కీరొయి',
+    englishPron: 'kee-ee-roh-ee',
+    level: 'N5',
+    tags: ['colors', 'adjectives'],
+    example: {
+      ja: 'きいろい はなが さきました。',
+      kana: 'きいろい はなが さきました。',
+      romaji: 'Kiiroi hana ga sakimashita.',
+      en: 'Yellow flowers bloomed.',
+      te: 'పసుపు రంగు పువ్వులు పూశాయి.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_chairo',
+    kana: 'ちゃいろ',
+    kanji: '茶色',
+    romaji: 'chairo',
+    meaningEn: 'Brown',
+    meaningTe: 'గోధుమ రంగు',
+    teluguVerified: false,
+    teluguPron: 'చయిరొ',
+    englishPron: 'chah-ee-roh',
+    level: 'N5',
+    tags: ['colors', 'noun'],
+    example: {
+      ja: 'ちゃいろの いぬが はしります。',
+      kana: 'ちゃいろの いぬが はしります。',
+      romaji: 'Chairo no inu ga hashirimasu.',
+      en: 'The brown dog runs.',
+      te: 'గోధుమ రంగు కుక్క పరిగెడుతోంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kaban',
+    kana: 'かばん',
+    romaji: 'kaban',
+    meaningEn: 'Bag',
+    meaningTe: 'సంచి / బ్యాగ్',
+    teluguVerified: false,
+    teluguPron: 'కబన్',
+    englishPron: 'kah-bahn',
+    level: 'N5',
+    tags: ['objects', 'noun'],
+    example: {
+      ja: 'かばんの なかに ほんが あります。',
+      kana: 'かばんの なかに ほんが あります。',
+      romaji: 'Kaban no naka ni hon ga arimasu.',
+      en: 'There is a book inside the bag.',
+      te: 'బ్యాగ్ లోపల పుస్తకం ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kasa',
+    kana: 'かさ',
+    kanji: '傘',
+    romaji: 'kasa',
+    meaningEn: 'Umbrella',
+    meaningTe: 'గొడుగు',
+    teluguVerified: false,
+    teluguPron: 'కస',
+    englishPron: 'kah-sah',
+    level: 'N5',
+    tags: ['objects', 'noun'],
+    example: {
+      ja: 'あめですから、かさを もちます。',
+      kana: 'あめですから、かさを もちます。',
+      romaji: 'Ame desu kara, kasa o mochimasu.',
+      en: 'Since it is raining, I carry an umbrella.',
+      te: 'వర్షం పడుతోంది కాబట్టి గొడుగు తీసుకుంటాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kagi',
+    kana: 'かぎ',
+    kanji: '鍵',
+    romaji: 'kagi',
+    meaningEn: 'Key',
+    meaningTe: 'తాళంచెవి',
+    teluguVerified: false,
+    teluguPron: 'కగి',
+    englishPron: 'kah-gee',
+    level: 'N5',
+    tags: ['objects', 'noun'],
+    example: {
+      ja: 'いえの かぎを なくしました。',
+      kana: 'いえの かぎを なくしました。',
+      romaji: 'Ie no kagi o nakushimashita.',
+      en: 'I lost my house key.',
+      te: 'నేను ఇంటి తాళంచెవి పోగొట్టుకున్నాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_saifu',
+    kana: 'さいふ',
+    kanji: '財布',
+    romaji: 'saifu',
+    meaningEn: 'Wallet / Purse',
+    meaningTe: 'పర్సు / వ్యాలెట్',
+    teluguVerified: false,
+    teluguPron: 'సైఫు',
+    englishPron: 'sah-ee-foo',
+    level: 'N5',
+    tags: ['objects', 'noun'],
+    example: {
+      ja: 'さいふを ポケットに いれます。',
+      kana: 'さいふを ポケットに いれます。',
+      romaji: 'Saifu o poketto ni iremasu.',
+      en: 'I put the wallet into my pocket.',
+      te: 'నేను పర్సు జేబులో పెట్టుకుంటాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_tokei',
+    kana: 'とけい',
+    kanji: '時計',
+    romaji: 'tokei',
+    meaningEn: 'Clock / Watch',
+    meaningTe: 'గడియారం',
+    teluguVerified: false,
+    teluguPron: 'తొకే',
+    englishPron: 'toh-keh-ee',
+    level: 'N5',
+    tags: ['objects', 'noun'],
+    example: {
+      ja: 'かべに とけいが あります。',
+      kana: 'かべに とけいが あります。',
+      romaji: 'Kabe ni tokei ga arimasu.',
+      en: 'There is a clock on the wall.',
+      te: 'గోడపై గడియారం ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kutsu',
+    kana: 'くつ',
+    kanji: '靴',
+    romaji: 'kutsu',
+    meaningEn: 'Shoes',
+    meaningTe: 'పాదరక్షలు / బూట్లు',
+    teluguVerified: false,
+    teluguPron: 'కుత్సు',
+    englishPron: 'koo-tsoo',
+    level: 'N5',
+    tags: ['clothing', 'noun'],
+    example: {
+      ja: 'げんかんで くつを ぬぎます。',
+      kana: 'げんかんで くつを ぬぎます。',
+      romaji: 'Genkan de kutsu o nugimasu.',
+      en: 'I take off my shoes at the entryway.',
+      te: 'నేను వాకిలి వద్ద బూట్లు విప్పుతాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_fuku',
+    kana: 'ふく',
+    kanji: '服',
+    romaji: 'fuku',
+    meaningEn: 'Clothes',
+    meaningTe: 'దుస్తులు / బట్టలు',
+    teluguVerified: false,
+    teluguPron: 'ఫుకు',
+    englishPron: 'foo-koo',
+    level: 'N5',
+    tags: ['clothing', 'noun'],
+    example: {
+      ja: 'あたたかい ふくを きます。',
+      kana: 'あたたかい ふくを きます。',
+      romaji: 'Atatakai fuku o kimasu.',
+      en: 'I wear warm clothes.',
+      te: 'నేను వెచ్చని బట్టలు వేసుకుంటాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_boushi',
+    kana: 'ぼうし',
+    kanji: '帽子',
+    romaji: 'boushi',
+    meaningEn: 'Hat / Cap',
+    meaningTe: 'టోపీ',
+    teluguVerified: false,
+    teluguPron: 'బోషి',
+    englishPron: 'boh-oo-shee',
+    level: 'N5',
+    tags: ['clothing', 'noun'],
+    example: {
+      ja: 'くろい ぼうしを かぶります。',
+      kana: 'くろい ぼうしを かぶります。',
+      romaji: 'Kuroi boushi o kaburimasu.',
+      en: 'I wear a black hat.',
+      te: 'నేను నల్ల టోపీ ధరిస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_koohii',
+    kana: 'コーヒー',
+    romaji: 'koohii',
+    meaningEn: 'Coffee',
+    meaningTe: 'కాఫీ',
+    teluguVerified: false,
+    teluguPron: 'కోహీ',
+    englishPron: 'koh-hee',
+    level: 'N5',
+    tags: ['food', 'katakana'],
+    example: {
+      ja: 'まいあさ コーヒーを のみます。',
+      kana: 'まいあさ コーヒーを のみます。',
+      romaji: 'Maiasa koohii o nomimasu.',
+      en: 'I drink coffee every morning.',
+      te: 'నేను ప్రతిరోజూ ఉదయం కాఫీ తాగుతాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_terebi',
+    kana: 'テレビ',
+    romaji: 'terebi',
+    meaningEn: 'Television / TV',
+    meaningTe: 'టీవీ / టెలివిజన్',
+    teluguVerified: false,
+    teluguPron: 'తెరెబి',
+    englishPron: 'teh-reh-bee',
+    level: 'N5',
+    tags: ['objects', 'katakana'],
+    example: {
+      ja: 'よるに テレビを みます。',
+      kana: 'よるに テレビを みます。',
+      romaji: 'Yoru ni terebi o mimasu.',
+      en: 'I watch television at night.',
+      te: 'నేను రాత్రి పూట టీవీ చూస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_rajio',
+    kana: 'ラジオ',
+    romaji: 'rajio',
+    meaningEn: 'Radio',
+    meaningTe: 'రేడియో',
+    teluguVerified: false,
+    teluguPron: 'రజిఒ',
+    englishPron: 'rah-jee-oh',
+    level: 'N5',
+    tags: ['objects', 'katakana'],
+    example: {
+      ja: 'ラジオで ニュースを ききます。',
+      kana: 'ラジオで ニュースを ききます。',
+      romaji: 'Rajio de nyuusu o kikimasu.',
+      en: 'I listen to the news on the radio.',
+      te: 'నేను రేడియోలో వార్తలు వింటాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_hoteru',
+    kana: 'ホテル',
+    romaji: 'hoteru',
+    meaningEn: 'Hotel',
+    meaningTe: 'హోటల్',
+    teluguVerified: false,
+    teluguPron: 'హొతెరు',
+    englishPron: 'hoh-teh-roo',
+    level: 'N5',
+    tags: ['places', 'katakana'],
+    example: {
+      ja: 'ホテルに とまります。',
+      kana: 'ホテルに とまります。',
+      romaji: 'Hoteru ni tomarimasu.',
+      en: 'I stay at a hotel.',
+      te: 'నేను హోటల్‌లో బస చేస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_takushii',
+    kana: 'タクシー',
+    romaji: 'takushii',
+    meaningEn: 'Taxi',
+    meaningTe: 'టాక్సీ',
+    teluguVerified: false,
+    teluguPron: 'తకుషీ',
+    englishPron: 'tahk-shee',
+    level: 'N5',
+    tags: ['transport', 'katakana'],
+    example: {
+      ja: 'タクシーで くうこうへ いきます。',
+      kana: 'タクシーで くうこうへ いきます。',
+      romaji: 'Takushii de kuukou e ikimasu.',
+      en: 'I go to the airport by taxi.',
+      te: 'నేను టాక్సీలో విమానాశ్రయానికి వెళ్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_depaato',
+    kana: 'デパート',
+    romaji: 'depaato',
+    meaningEn: 'Department Store',
+    meaningTe: 'డిపార్ట్‌మెంట్ స్టోర్',
+    teluguVerified: false,
+    teluguPron: 'దెపాతొ',
+    englishPron: 'deh-pah-toh',
+    level: 'N5',
+    tags: ['places', 'katakana'],
+    example: {
+      ja: 'デパートで かいもの します。',
+      kana: 'デパートで かいもの します。',
+      romaji: 'Depaato de kaimono shimasu.',
+      en: 'I shop at the department store.',
+      te: 'నేను డిపార్ట్‌మెంట్ స్టోర్‌లో షాపింగ్ చేస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_resutoran',
+    kana: 'レストラン',
+    romaji: 'resutoran',
+    meaningEn: 'Restaurant',
+    meaningTe: 'రెస్టారెంట్',
+    teluguVerified: false,
+    teluguPron: 'రెసుతొరన్',
+    englishPron: 'reh-soo-toh-rahn',
+    level: 'N5',
+    tags: ['places', 'katakana'],
+    example: {
+      ja: 'いい レストランを みつけました。',
+      kana: 'いい レストランを みつけました。',
+      romaji: 'Ii resutoran o mitsukemashita.',
+      en: 'I found a good restaurant.',
+      te: 'నాకు ఒక మంచి రెస్టారెంట్ దొరికింది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kaisha',
+    kana: 'かいしゃ',
+    kanji: '会社',
+    romaji: 'kaisha',
+    meaningEn: 'Company / Corporation',
+    meaningTe: 'కంపెనీ / సంస్థ',
+    teluguVerified: false,
+    teluguPron: 'కైష',
+    englishPron: 'kah-ee-shah',
+    level: 'N5',
+    tags: ['work', 'noun'],
+    example: {
+      ja: 'きゅうじに かいしゃへ いきます。',
+      kana: 'くじに かいしゃへ いきます。',
+      romaji: 'Kuji ni kaisha e ikimasu.',
+      en: 'I go to the company at nine o’clock.',
+      te: 'నేను తొమ్మిది గంటలకు కంపెనీకి వెళ్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_shigoto',
+    kana: 'しごと',
+    kanji: '仕事',
+    romaji: 'shigoto',
+    meaningEn: 'Job / Work',
+    meaningTe: 'పని / ఉద్యోగం',
+    teluguVerified: false,
+    teluguPron: 'షిగొతొ',
+    englishPron: 'shee-goh-toh',
+    level: 'N5',
+    tags: ['work', 'noun'],
+    example: {
+      ja: 'きょうは しごとが おおいです。',
+      kana: 'きょうは しごとが おおいです。',
+      romaji: 'Kyou wa shigoto ga ooi desu.',
+      en: 'There is a lot of work today.',
+      te: 'ఈ రోజు పని చాలా ఉంది.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_byouin',
+    kana: 'びょういん',
+    kanji: '病院',
+    romaji: 'byouin',
+    meaningEn: 'Hospital',
+    meaningTe: 'ఆసుపత్రి',
+    teluguVerified: false,
+    teluguPron: 'బ్యోయిన్',
+    englishPron: 'byoh-een',
+    level: 'N5',
+    tags: ['places', 'noun'],
+    example: {
+      ja: 'びょういんで くすりを もらいました。',
+      kana: 'びょういんで くすりを もらいました。',
+      romaji: 'Byouin de kusuri o moraimashita.',
+      en: 'I got medicine at the hospital.',
+      te: 'నేను ఆసుపత్రిలో మందులు తీసుకున్నాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_kusuri',
+    kana: 'くすり',
+    kanji: '薬',
+    romaji: 'kusuri',
+    meaningEn: 'Medicine',
+    meaningTe: 'మందులు',
+    teluguVerified: false,
+    teluguPron: 'కుసురి',
+    englishPron: 'koo-soo-ree',
+    level: 'N5',
+    tags: ['health', 'noun'],
+    example: {
+      ja: 'ごはんの あとに くすりを のみます。',
+      kana: 'ごはんの あとに くすりを のみます。',
+      romaji: 'Gohan no ato ni kusuri o nomimasu.',
+      en: 'I take medicine after meals.',
+      te: 'నేను భోజనం తర్వాత మందులు వేసుకుంటాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_teepu',
+    kana: 'テープ',
+    romaji: 'teepu',
+    meaningEn: 'Tape',
+    meaningTe: 'టేప్',
+    teluguVerified: false,
+    teluguPron: 'తేపు',
+    englishPron: 'teh-poo',
+    level: 'N5',
+    tags: ['objects', 'katakana'],
+    example: {
+      ja: 'テープで はります。',
+      kana: 'テープで はります。',
+      romaji: 'Teepu de harimasu.',
+      en: 'I stick it with tape.',
+      te: 'నేను టేప్‌తో అతికిస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_nooto',
+    kana: 'ノート',
+    romaji: 'nooto',
+    meaningEn: 'Notebook',
+    meaningTe: 'నోట్‌బుక్ / పుస్తకం',
+    teluguVerified: false,
+    teluguPron: 'నోతో',
+    englishPron: 'noh-toh',
+    level: 'N5',
+    tags: ['school', 'katakana'],
+    example: {
+      ja: 'ノートに メモを かきます。',
+      kana: 'ノートに メモを かきます。',
+      romaji: 'Nooto ni memo o kakimasu.',
+      en: 'I write notes in the notebook.',
+      te: 'నేను నోట్‌బుక్‌లో వివరాలు రాస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_toire',
+    kana: 'トイレ',
+    romaji: 'toire',
+    meaningEn: 'Toilet / Restroom',
+    meaningTe: 'మరుగుదొడ్డి / రెస్ట్‌రూమ్',
+    teluguVerified: false,
+    teluguPron: 'తొయిరె',
+    englishPron: 'toh-ee-reh',
+    level: 'N5',
+    tags: ['places', 'katakana'],
+    example: {
+      ja: 'トイレは どこ ですか。',
+      kana: 'トイレは どこ ですか。',
+      romaji: 'Toire wa doko desu ka.',
+      en: 'Where is the restroom?',
+      te: 'రెస్ట్‌రూమ్ ఎక్కడ ఉంది?',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_supuun',
+    kana: 'スプーン',
+    romaji: 'supuun',
+    meaningEn: 'Spoon',
+    meaningTe: 'చెంచా / స్పూన్',
+    teluguVerified: false,
+    teluguPron: 'సుపూన్',
+    englishPron: 'soo-poon',
+    level: 'N5',
+    tags: ['kitchen', 'katakana'],
+    example: {
+      ja: 'スプーンを ひとつ ください。',
+      kana: 'スプーンを ひとつ ください。',
+      romaji: 'Supuun o hitotsu kudasai.',
+      en: 'Please give me one spoon.',
+      te: 'దయచేసి ఒక స్పూన్ ఇవ్వండి.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_naifu',
+    kana: 'ナイフ',
+    romaji: 'naifu',
+    meaningEn: 'Knife',
+    meaningTe: 'కత్తి',
+    teluguVerified: false,
+    teluguPron: 'నైఫు',
+    englishPron: 'nah-ee-foo',
+    level: 'N5',
+    tags: ['kitchen', 'katakana'],
+    example: {
+      ja: 'ナイフで パンを きります。',
+      kana: 'ナイフで パンを きります。',
+      romaji: 'Naifu de pan o kirimasu.',
+      en: 'I cut bread with a knife.',
+      te: 'నేను కత్తితో బ్రెడ్ కోస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_fooku',
+    kana: 'フォーク',
+    romaji: 'fooku',
+    meaningEn: 'Fork',
+    meaningTe: 'ముళ్ళ చెంచా / ఫోర్క్',
+    teluguVerified: false,
+    teluguPron: 'ఫోకు',
+    englishPron: 'foh-koo',
+    level: 'N5',
+    tags: ['kitchen', 'katakana'],
+    example: {
+      ja: 'フォークを つかいます。',
+      kana: 'フォークを つかいます。',
+      romaji: 'Fooku o tsukaimasu.',
+      en: 'I use a fork.',
+      te: 'నేను ఫోర్క్ ఉపయోగిస్తాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_sandoicchi',
+    kana: 'サンドイッチ',
+    romaji: 'sandoicchi',
+    meaningEn: 'Sandwich',
+    meaningTe: 'శాండ్‌విచ్',
+    teluguVerified: false,
+    teluguPron: 'సందొఇచ్చి',
+    englishPron: 'sahn-doh-eet-chee',
+    level: 'N5',
+    tags: ['food', 'katakana'],
+    example: {
+      ja: 'たまご サンドイッチを たべます。',
+      kana: 'たまご サンドイッチを たべます。',
+      romaji: 'Tamago sandoicchi o tabemasu.',
+      en: 'I eat an egg sandwich.',
+      te: 'నేను ఎగ్ శాండ్‌విచ్ తింటాను.',
+      teVerified: false
+    }
+  },
+  {
+    id: 'd_aisukuriimu',
+    kana: 'アイスクリーム',
+    romaji: 'aisukuriimu',
+    meaningEn: 'Ice cream',
+    meaningTe: 'ఐస్‌క్రీమ్',
+    teluguVerified: false,
+    teluguPron: 'ఐసుకురీము',
+    englishPron: 'ah-ee-soo-koo-ree-moo',
+    level: 'N5',
+    tags: ['food', 'katakana'],
+    example: {
+      ja: 'つめたい アイスクリームが すき です。',
+      kana: 'つめたい アイスクリームが すき です。',
+      romaji: 'Tsumetai aisukuriimu ga suki desu.',
+      en: 'I like cold ice cream.',
+      te: 'నాకు చల్లటి ఐస్‌క్రీమ్ ఇష్టం.',
+      teVerified: false
+    }
+  }
+];
