@@ -9,7 +9,7 @@
 | **Phase 2: Dictation Studio + Fix-ups** | Completed | Setup screen with live pool calculation, Audio Engine state machine with single-channel & 6s watchdog fallback, deferred evaluation in Screen Mode, answer length hint toggling (forced off in strict mode), UnverifiedBadge for Telugu disclosures, and FSRS integration. |
 | **Phase 3a: Technical Japanese for Electronics** | Completed | Vocabulary deck of 80 electronics/semiconductor/manufacturing terms (`半導体`, `抵抗`, `回路`, `電圧`, etc.), morphological compound kanji breakdown view, FSRS spaced review integration. |
 | **Phase 3b: Engineering Fundamentals Track** | Completed | Digital Electronics + Semiconductor Manufacturing Basics: 6 typed lesson modules, 24 quiz questions with explanations and draft disclaimers, 4 interactive pure SVG/React simulations (Ohm's Law, RC Charging, Logic Gates, 8-Step Wafer Process), weak-topic detection and targeted drill remediation. |
-| **Phase 4: Interview Arena** | Planned | Tech interview simulation, self-intro (Jikoshoukai), keigo honorifics, speech evaluation. |
+| **Phase 4: Interview Arena** | Completed | Tech interview simulation (60 questions across 8 domains), deterministic rubric scoring, timed mock interview with weak-area diagnostics, Japanese workplace mode (7 cards, templates without hallucinated info), Web Speech recognition & fallback, safe Supabase Edge Function AI feedback. |
 | **Phase 5: Career Studio** | Planned | Japanese Rirekisho & Shokumukeirekisho resume builders, tech email templates. |
 | **Phase 6: Job Tracker** | Planned | Japan tech job pipeline, visa sponsorship tracking, JLPT requirement tags. |
 | **Phase 7: Career Roadmap** | Planned | Milestone ladder from beginner to Tokyo tech hire, milestone gates, timeline estimator. |
@@ -20,12 +20,13 @@
 
 - **Total N5 Dictation Words**: 150 (100% flagged `teluguVerified: false`)
 - **Total Technical Japanese Terms**: 80 (100% flagged `teluguVerified: false`, `reviewed: false`)
-- **Combined Telugu Disclosure Audit**: 230 total vocabulary items across dictionary and technical engineering suite cleanly guarded with `<UnverifiedBadge />`.
-- **Linguistic & Academic Integrity Status**: Zero fake data presented as real; all lessons, quizzes, and technical vocabulary render visible disclaimer badges.
+- **Total Japanese Interview Workplace Cards**: 7 (100% flagged `teluguVerified: false`, `reviewed: false`)
+- **Combined Telugu Disclosure Audit**: 237 total items across dictionary, technical engineering, and interview workplace cards cleanly guarded with `<UnverifiedBadge />`.
+- **Linguistic & Academic Integrity Status**: Zero fake data presented as real; all lessons, quizzes, 60 interview questions, and technical vocabulary render visible disclaimer badges.
 
 ---
 
-## Active Phase: Phase 3a & 3b (Electronics & Semiconductor Engineering Suite)
+## Active Phase: Phase 5 (Career Studio)
 
 ### Dictation Studio Fix-ups (Completed)
 - [x] 1. Deferred evaluation in Screen Mode: no correct/incorrect or target spelling shown until whole session is submitted. Navigating and editing earlier answers is fully enabled.
@@ -61,4 +62,16 @@
   - 4. Step-through wafer fabrication flow diagram (`WaferProcessDiagram.tsx`)
 - [x] Storage & targeted practice for weak topics (`src/features/electronics/storage.ts`).
 - [x] Integration into `Sidebar.tsx`, `CommandPalette.tsx`, and `App.tsx` as `'electronics'`.
-- [x] Vitest test suite (`src/tests/electronics.test.ts`) with 16 comprehensive unit & math tests (188 total passing tests in suite).
+- [x] Vitest test suite (`src/tests/electronics.test.ts`) with 16 comprehensive unit & math tests.
+
+### Phase 4 - Interview Arena (Completed)
+- [x] Electronics gate fix: Unlocked `electronics` from the start (`requiredStage: 0` in `Sidebar.tsx`); only the Technical Japanese vocabulary deck is gated by kana completion.
+- [x] Question bank of 60 starter questions across 8 categories (`ece_fundamentals`, `semiconductors`, `manufacturing_process`, `embedded_systems`, `quality_testing`, `troubleshooting`, `projects`, `behavioral_hr`), beginner/intermediate/advanced levels, and MCQ/descriptive formats. All marked `reviewed: false` with visible draft disclaimers.
+- [x] Practice mode: instant MCQ grading with full explanations; incorrect answers enter FSRS review; descriptive answers scored via deterministic rubric (keyword/concept matcher) + model answer reveal + explicit disclosure that scoring is deterministic and not AI.
+- [x] Timed mock interview mode: 5, 10, or 15 questions, countdown timer, no hints, session summary with strong ($\ge 75\%$) and weak ($< 70\%$) category diagnostics, and targeted practice button for weak areas.
+- [x] Japanese workplace mode: 7 topic cards (self-intro, education, projects, strengths/weaknesses, why Japan, reverse questions, polite keigo). All entries feature Japanese, kana, romaji, English, and Telugu (`teluguVerified: false` with `<UnverifiedBadge />`).
+- [x] Template blank-filler keeping placeholders `{fieldName}` visible when fields are blank/missing, never fabricating user qualifications.
+- [x] Audio speech synthesis & speech recognition (`speechRecognition.ts`) with similarity check against script and browser support fallback.
+- [x] Edge function AI feedback modal (`AIFeedbackModal.tsx`): Authenticated-only, clear privacy disclosure, and explicit "AI feedback not configured" state when keys or edge functions are absent (zero hallucinated feedback).
+- [x] User-scoped local storage + Supabase sync (`src/features/interview/storage.ts`).
+- [x] Vitest test suite (`src/tests/interview.test.ts`) with 16 comprehensive tests (204 total passing tests across 17 test suites).
