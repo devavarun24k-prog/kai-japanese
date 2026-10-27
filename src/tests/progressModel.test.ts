@@ -133,4 +133,33 @@ describe('characterMasteryService & Migration', () => {
     expect(migrated['い'].seenCount).toBe(5);
     expect(migrated['い'].state).toBe('mastered');
   });
+
+  it('should guarantee a brand new user starts with an EMPTY learned set', () => {
+    // New user with no FSRS cards, no attempts, no overrides
+    storageService.setUserId('brand_new_user_' + Date.now());
+    const learned = characterMasteryService.getLearnedGlyphs();
+    expect(learned.size).toBe(0);
+  });
+
+  it('should not mark a character known if FSRS card is only in learning (1) or relearning (3) state', () => {
+    const learningCard: FSRSCard = {
+      card_id: 'c_kana_h_u',
+      item_id: 'h_u', // 'う'
+      item_type: 'kana',
+      state: 1, // Learning
+      due: '2026-10-30T00:00:00Z',
+      stability: 0.8,
+      difficulty: 6.0,
+      elapsed_days: 0,
+      scheduled_days: 0,
+      reps: 1,
+      lapses: 0
+    };
+    storageService.saveCards([learningCard]);
+
+    const migrated = characterMasteryService.migrateFromExistingProgress();
+    expect(migrated['う'].state).toBe('learning');
+    const learned = characterMasteryService.getLearnedGlyphs();
+    expect(learned.has('う')).toBe(false);
+  });
 });

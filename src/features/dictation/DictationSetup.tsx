@@ -18,6 +18,8 @@ export const DictationSetup: React.FC<DictationSetupProps> = ({
 }) => {
   const [mode, setMode] = useState<DictationMode>('screen');
   const [questionCount, setQuestionCount] = useState<number>(10);
+  const [showLengthHint, setShowLengthHint] = useState<boolean>(false);
+  const [strictMode, setStrictMode] = useState<boolean>(false);
 
   const learnedSet = useMemo(() => {
     return characterMasteryService.getLearnedGlyphs();
@@ -119,6 +121,61 @@ export const DictationSetup: React.FC<DictationSetupProps> = ({
         </div>
       </div>
 
+      {/* Session Settings */}
+      <div className="p-6 rounded-3xl bg-white/90 dark:bg-[#141D33] border border-[#DDD2B8] dark:border-[#2E4370] shadow-washi space-y-4">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-stone-500 font-mono">
+          3. Options & Hints
+        </h3>
+        <div className="space-y-3">
+          {/* Strict Mode Toggle */}
+          <label className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 cursor-pointer">
+            <div>
+              <span className="text-xs font-bold text-stone-800 dark:text-stone-200 block">
+                Strict Mode (厳格モード)
+              </span>
+              <span className="text-[11px] text-stone-500 block">
+                Forces length hints off. Authentic test conditions without mora-count clues.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={strictMode}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setStrictMode(checked);
+                if (checked) setShowLengthHint(false);
+              }}
+              className="w-4 h-4 rounded text-kai-vermilion focus:ring-kai-vermilion cursor-pointer"
+            />
+          </label>
+
+          {/* Answer Length Hint Toggle */}
+          <label
+            className={`flex items-center justify-between p-3 rounded-2xl border transition-colors ${
+              strictMode
+                ? 'opacity-40 cursor-not-allowed bg-stone-100 dark:bg-stone-900/20 border-stone-200 dark:border-stone-800'
+                : 'bg-stone-50 dark:bg-stone-900/50 border-stone-200 dark:border-stone-800 cursor-pointer'
+            }`}
+          >
+            <div>
+              <span className="text-xs font-bold text-stone-800 dark:text-stone-200 block">
+                Show answer length hint
+              </span>
+              <span className="text-[11px] text-stone-500 block">
+                Displays exact slot count for target word (Off by default; disabled in strict mode).
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              disabled={strictMode}
+              checked={!strictMode && showLengthHint}
+              onChange={(e) => setShowLengthHint(e.target.checked)}
+              className="w-4 h-4 rounded text-kai-vermilion focus:ring-kai-vermilion cursor-pointer"
+            />
+          </label>
+        </div>
+      </div>
+
       {/* Live Eligibility Status */}
       <div className="p-5 rounded-2xl bg-[#FAF7F2] dark:bg-[#0E1626] border border-[#E8E3D9] dark:border-[#233457] space-y-3">
         <div className="flex items-center justify-between text-xs font-mono">
@@ -158,14 +215,21 @@ export const DictationSetup: React.FC<DictationSetupProps> = ({
         <button
           type="button"
           disabled={!canStart}
-          onClick={() => onStartSession({ mode, questionCount: actualCount })}
+          onClick={() =>
+            onStartSession({
+              mode,
+              questionCount: actualCount,
+              showLengthHint: strictMode ? false : showLengthHint,
+              strictMode
+            })
+          }
           className="w-full py-4 rounded-2xl bg-gradient-to-r from-kai-vermilion to-kai-vermilion-dark text-white font-serif_jp font-bold text-lg shadow-vermilion hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Play className="w-5 h-5 fill-current" />
           Start Session ({actualCount} Words)
         </button>
 
-        {onOpenDebugger && (
+        {import.meta.env.DEV && onOpenDebugger && (
           <div className="text-center">
             <button
               type="button"

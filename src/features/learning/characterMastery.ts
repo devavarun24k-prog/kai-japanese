@@ -161,15 +161,19 @@ class CharacterMasteryService {
           rec.fsrsDue = card.due;
           rec.lastSeen = card.last_review || card.due;
 
-          // If FSRS state is Review (2) and stability >= 1.0, consider known/mastered
-          if (card.state === 2 && card.stability >= 2.0) {
+          // Only mark known/mastered when FSRS state is Review (2) and stability/reps justify it
+          if (card.state === 2 && card.stability >= 2.5 && card.reps >= 3 && card.lapses === 0) {
             rec.state = 'mastered';
             rec.correctCount = Math.max(rec.correctCount, rec.seenCount);
-          } else if (card.state === 2) {
+          } else if (card.state === 2 && card.stability >= 1.2 && card.reps >= 2) {
             rec.state = 'known';
             rec.correctCount = Math.max(rec.correctCount, Math.ceil(rec.seenCount * 0.75));
-          } else if (card.state === 1) {
+          } else if (card.state === 3 || card.lapses > 1) {
+            rec.state = 'struggling';
+          } else if (card.state === 1 || card.reps > 0) {
             rec.state = 'learning';
+          } else {
+            rec.state = 'unseen';
           }
         }
       });

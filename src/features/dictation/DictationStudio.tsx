@@ -18,7 +18,12 @@ type DictationStep = 'setup' | 'session' | 'results' | 'debug';
 export const DictationStudio: React.FC = () => {
   const { setActiveSection } = useLearning();
   const [step, setStep] = useState<DictationStep>('setup');
-  const [config, setConfig] = useState<DictationConfig>({ mode: 'screen', questionCount: 10 });
+  const [config, setConfig] = useState<DictationConfig>({
+    mode: 'screen',
+    questionCount: 10,
+    showLengthHint: false,
+    strictMode: false
+  });
   const [activeWords, setActiveWords] = useState<typeof N5_KANA_WORDS>([]);
   const [sessionRecords, setSessionRecords] = useState<DictationAnswerRecord[]>([]);
 
@@ -58,6 +63,7 @@ export const DictationStudio: React.FC = () => {
       {step === 'session' && config.mode === 'screen' && (
         <DictationScreenMode
           words={activeWords}
+          config={config}
           onFinishSession={handleFinishSession}
           onExit={handleRestart}
         />
@@ -79,7 +85,7 @@ export const DictationStudio: React.FC = () => {
         />
       )}
 
-      {step === 'debug' && (
+      {step === 'debug' && import.meta.env.DEV && (
         <div className="space-y-4">
           <button
             type="button"

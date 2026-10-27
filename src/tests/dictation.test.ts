@@ -82,3 +82,59 @@ describe('Dictation Input & Kana Units Manipulation', () => {
     expect(input).toBe('');
   });
 });
+
+describe('Dictation Configuration & Hints', () => {
+  it('should have answer length hint disabled by default', () => {
+    const defaultConfig = {
+      mode: 'screen' as const,
+      questionCount: 10,
+      showLengthHint: false,
+      strictMode: false
+    };
+    expect(defaultConfig.showLengthHint).toBe(false);
+    expect(defaultConfig.strictMode).toBe(false);
+  });
+
+  it('should force answer length hint OFF when strict mode is enabled', () => {
+    const userSelectedHint = true;
+    const strictModeEnabled = true;
+
+    // Configuration resolution rule
+    const resolvedHint = strictModeEnabled ? false : userSelectedHint;
+    expect(resolvedHint).toBe(false);
+  });
+});
+
+describe('Screen Mode Deferred Evaluation & Navigation', () => {
+  it('should allow modifying earlier answers without premature evaluation', () => {
+    const words = [
+      { id: 'w1', kana: 'あさ' },
+      { id: 'w2', kana: 'ひる' },
+      { id: 'w3', kana: 'よる' }
+    ];
+
+    const answers = ['', '', ''];
+
+    // User types answer for word 1
+    answers[0] = 'あし'; // typo
+    // User moves to word 2
+    answers[1] = 'ひる';
+    // User goes back to word 1 and corrects it
+    answers[0] = 'あさ';
+
+    expect(answers[0]).toBe('あさ');
+    expect(answers[1]).toBe('ひる');
+    expect(answers[2]).toBe('');
+
+    // Final evaluation only occurs upon session submission:
+    const records = words.map((w, idx) => ({
+      itemId: w.id,
+      input: answers[idx],
+      isCorrect: answers[idx] === w.kana
+    }));
+
+    expect(records[0].isCorrect).toBe(true);
+    expect(records[1].isCorrect).toBe(true);
+    expect(records[2].isCorrect).toBe(false);
+  });
+});

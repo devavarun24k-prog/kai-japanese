@@ -6,6 +6,7 @@ import { DictationVocabItem } from '../../data/vocab/types';
 import { DictationAnswerRecord } from './types';
 import { dictationAudio } from './audioEngine';
 import { FSRSRating } from '../../types';
+import { UnverifiedBadge } from '../../components/common/UnverifiedBadge';
 
 interface DictationPaperModeProps {
   words: DictationVocabItem[];
@@ -155,13 +156,14 @@ export const DictationPaperMode: React.FC<DictationPaperModeProps> = ({
                   {currentWord.kanji}
                 </div>
               )}
-              <p className="text-sm font-medium text-stone-800 dark:text-stone-200">
-                {currentWord.meaningEn}
+              <p className="text-sm font-medium text-stone-800 dark:text-stone-200 flex items-center justify-center flex-wrap gap-1.5">
+                <span>{currentWord.meaningEn}</span>
                 {currentWord.meaningTe && (
-                  <span className="ml-2 font-telugu text-stone-500 font-normal">
+                  <span className="font-telugu text-stone-500 font-normal">
                     ({currentWord.meaningTe})
                   </span>
                 )}
+                <UnverifiedBadge isVerified={currentWord.teluguVerified} />
               </p>
             </div>
           )}

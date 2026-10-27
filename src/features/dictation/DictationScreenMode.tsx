@@ -1,40 +1,41 @@
 // src/features/dictation/DictationScreenMode.tsx
-// Interactive Screen Mode for Dictation Studio with Kana slots and live audio
+// Interactive Screen Mode for Dictation Studio with navigation, deferred evaluation, and length hints
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, Snail, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import { Volume2, Snail, ArrowRight, ArrowLeft, Send } from 'lucide-react';
 import { DictationVocabItem } from '../../data/vocab/types';
-import { DictationAnswerRecord } from './types';
+import { DictationConfig, DictationAnswerRecord } from './types';
 import { dictationAudio } from './audioEngine';
 import { KanaKeyboard } from './KanaKeyboard';
 import { splitKanaUnits } from './eligibility';
 
 interface DictationScreenModeProps {
   words: DictationVocabItem[];
+  config: DictationConfig;
   onFinishSession: (records: DictationAnswerRecord[]) => void;
   onExit: () => void;
 }
 
 export const DictationScreenMode: React.FC<DictationScreenModeProps> = ({
   words,
+  config,
   onFinishSession,
   onExit
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userInput, setUserInput] = useState<string>('');
-  const [isAnswered, setIsAnswered] = useState<boolean>(false);
-  const [replaysCount, setReplaysCount] = useState<number>(0);
-  const [sessionRecords, setSessionRecords] = useState<DictationAnswerRecord[]>([]);
-  const questionStartTimeRef = useRef<number>(Date.now());
+  const [userAnswers, setUserAnswers] = useState<string[]>(() => Array(words.length).fill(''));
+  const [replaysMap, setReplaysMap] = useState<Record<number, number>>({});
+  const startTimesRef = useRef<Record<number, number>>({});
 
   const currentWord = words[currentIndex];
   const expectedUnits = splitKanaUnits(currentWord.kana);
+  const currentAnswer = userAnswers[currentIndex] || '';
+  const currentUserUnits = splitKanaUnits(currentAnswer);
 
-  // Auto-play audio on question mount
+  // Initialize start time for active word and auto-play
   useEffect(() => {
-    questionStartTimeRef.current = Date.now();
-    setUserInput('');
-    setIsAnswered(false);
-    setReplaysCount(0);
+    if (!startTimesRef.current[currentIndex]) {
+      startTimesRef.current[currentIndex] = Date.now();
+    }
     dictationAudio.play(currentWord.kana);
 
     return () => {
@@ -56,7 +57,10 @@ export const DictationScreenMode: React.FC<DictationScreenModeProps> = ({
   }, [currentWord]);
 
   const handleReplay = (slow: boolean = false) => {
-    setReplaysCount((prev) => prev + 1);
+    setReplaysMap((prev) => ({
+      ...prev,
+      [currentIndex]: (prev[currentIndex] || 0) + 1
+    }));
     if (slow) {
       dictationAudio.playSlow(currentWord.kana);
     } else {
@@ -65,58 +69,73 @@ export const DictationScreenMode: React.FC<DictationScreenModeProps> = ({
   };
 
   const handleInsertKana = (char: string) => {
-    if (isAnswered) return;
-    setUserInput((prev) => prev + char);
+    setUserAnswers((prev) => {
+      const copy = [...prev];
+      copy[currentIndex] = (copy[currentIndex] || '') + char;
+      return copy;
+    });
   };
 
   const handleBackspace = () => {
-    if (isAnswered || userInput.length === 0) return;
-    // Remove last mora (including digraphs if present)
-    const units = splitKanaUnits(userInput);
+    if (!currentAnswer) return;
+    const units = splitKanaUnits(currentAnswer);
     units.pop();
-    setUserInput(units.join(''));
+    setUserAnswers((prev) => {
+      const copy = [...prev];
+      copy[currentIndex] = units.join('');
+      return copy;
+    });
   };
 
   const handleClear = () => {
-    if (isAnswered) return;
-    setUserInput('');
+    setUserAnswers((prev) => {
+      const copy = [...prev];
+      copy[currentIndex] = '';
+      return copy;
+    });
   };
 
-  const handleSubmit = () => {
-    if (isAnswered || !userInput.trim()) return;
-    const timeSpent = Date.now() - questionStartTimeRef.current;
-    const cleanUser = userInput.trim();
-    const cleanExpected = currentWord.kana.trim();
-    const isCorrect = cleanUser === cleanExpected;
-
-    const record: DictationAnswerRecord = {
-      item: currentWord,
-      userInputKana: cleanUser,
-      isCorrect,
-      timeSpentMs: timeSpent,
-      replaysCount
-    };
-
-    setSessionRecords((prev) => [...prev, record]);
-    setIsAnswered(true);
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+    }
   };
 
   const handleNext = () => {
     if (currentIndex + 1 < words.length) {
       setCurrentIndex((prev) => prev + 1);
-    } else {
-      onFinishSession(sessionRecords);
     }
   };
 
-  const isCorrect = isAnswered && userInput.trim() === currentWord.kana.trim();
+  const handleFinalSubmit = () => {
+    const records: DictationAnswerRecord[] = words.map((item, idx) => {
+      const userInput = (userAnswers[idx] || '').trim();
+      const cleanExpected = item.kana.trim();
+      const isCorrect = userInput === cleanExpected;
+      const timeSpent = Math.max(1000, Date.now() - (startTimesRef.current[idx] || Date.now()));
+
+      return {
+        item,
+        userInputKana: userInput,
+        isCorrect,
+        timeSpentMs: timeSpent,
+        replaysCount: replaysMap[idx] || 0
+      };
+    });
+
+    onFinishSession(records);
+  };
+
+  const answeredCount = userAnswers.filter((a) => a.trim().length > 0).length;
+  const isLastQuestion = currentIndex === words.length - 1;
+  const isLengthHintActive = config.showLengthHint && !config.strictMode;
 
   return (
     <div className="max-w-xl mx-auto space-y-4">
-      {/* Top Header / Progress Bar */}
+      {/* Top Header & Question Navigation Pills */}
       <div className="flex items-center justify-between text-xs font-mono text-stone-500">
         <span>
-          Word {currentIndex + 1} of {words.length}
+          Answered {answeredCount} of {words.length}
         </span>
         <button
           type="button"
@@ -126,11 +145,32 @@ export const DictationScreenMode: React.FC<DictationScreenModeProps> = ({
           Exit Session
         </button>
       </div>
-      <div className="w-full bg-stone-200 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
-        <div
-          className="bg-kai-vermilion h-full transition-all duration-300"
-          style={{ width: `${((currentIndex + 1) / words.length) * 100}%` }}
-        />
+
+      {/* Question Selector Pills */}
+      <div className="flex items-center justify-center gap-1.5 overflow-x-auto py-1">
+        {words.map((_, idx) => {
+          const isAnswered = Boolean(userAnswers[idx]?.trim());
+          const isCurrent = idx === currentIndex;
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setCurrentIndex(idx)}
+              className={`w-8 h-8 rounded-xl text-xs font-mono font-bold transition-all relative flex items-center justify-center border ${
+                isCurrent
+                  ? 'bg-kai-indigo text-white border-kai-indigo shadow-sm scale-105'
+                  : isAnswered
+                  ? 'bg-stone-200 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border-stone-300 dark:border-stone-700'
+                  : 'bg-white dark:bg-stone-900 text-stone-400 border-dashed border-stone-300 dark:border-stone-800'
+              }`}
+            >
+              {idx + 1}
+              {isAnswered && !isCurrent && (
+                <span className="w-1.5 h-1.5 rounded-full bg-kai-green absolute -top-0.5 -right-0.5" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Main Dictation Card */}
@@ -156,96 +196,103 @@ export const DictationScreenMode: React.FC<DictationScreenModeProps> = ({
           </button>
         </div>
 
-        {/* Input Slots */}
+        {/* Input Slots / Mora Display */}
         <div className="space-y-2">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-stone-400">
-            Target length: {expectedUnits.length} moras
-          </span>
-          <div className="flex justify-center gap-2 min-h-[56px] items-center">
-            {expectedUnits.map((_, idx) => {
-              const userUnits = splitKanaUnits(userInput);
-              const charAtSlot = userUnits[idx] || '';
-              return (
-                <div
-                  key={idx}
-                  className={`w-12 h-14 rounded-2xl border-2 flex items-center justify-center font-serif_jp text-xl font-bold transition-all ${
-                    charAtSlot
-                      ? 'border-kai-indigo bg-kai-indigo-bg/30 dark:bg-kai-indigo-dark text-kai-indigo dark:text-kai-gold'
-                      : 'border-dashed border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 text-transparent'
-                  }`}
-                >
-                  {charAtSlot || '・'}
-                </div>
-              );
-            })}
-          </div>
+          {isLengthHintActive ? (
+            // Answer Length Hint ON: Fixed number of slots
+            <div className="space-y-1">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-stone-400">
+                Word length hint: {expectedUnits.length} moras
+              </span>
+              <div className="flex justify-center gap-2 min-h-[56px] items-center">
+                {expectedUnits.map((_, idx) => {
+                  const charAtSlot = currentUserUnits[idx] || '';
+                  return (
+                    <div
+                      key={idx}
+                      className={`w-12 h-14 rounded-2xl border-2 flex items-center justify-center font-serif_jp text-xl font-bold transition-all ${
+                        charAtSlot
+                          ? 'border-kai-indigo bg-kai-indigo-bg/30 dark:bg-kai-indigo-dark text-kai-indigo dark:text-kai-gold'
+                          : 'border-dashed border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 text-transparent'
+                      }`}
+                    >
+                      {charAtSlot || '・'}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            // Answer Length Hint OFF (or Strict Mode): Dynamic input display without revealing mora count
+            <div className="space-y-1">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-stone-400">
+                {config.strictMode ? 'Strict Mode (No Length Clues)' : 'Enter what you hear'}
+              </span>
+              <div className="flex justify-center flex-wrap gap-2 min-h-[56px] items-center p-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30">
+                {currentUserUnits.length === 0 ? (
+                  <span className="text-sm font-serif_jp text-stone-400 italic">
+                    Type moras using keyboard below...
+                  </span>
+                ) : (
+                  currentUserUnits.map((char, idx) => (
+                    <div
+                      key={idx}
+                      className="w-12 h-14 rounded-2xl border-2 border-kai-indigo bg-kai-indigo-bg/30 dark:bg-kai-indigo-dark text-kai-indigo dark:text-kai-gold flex items-center justify-center font-serif_jp text-xl font-bold animate-fadeIn"
+                    >
+                      {char}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Evaluation Banner (Shown after submit) */}
-        {isAnswered && (
-          <div
-            className={`p-4 rounded-2xl border text-left space-y-2 transition-all ${
-              isCorrect
-                ? 'bg-kai-green-bg/80 border-kai-green text-kai-green-dark'
-                : 'bg-kai-vermilion-bg/80 border-kai-vermilion text-kai-vermilion-dark'
-            }`}
+        {/* Navigation Buttons: Prev, Next, Submit */}
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            disabled={currentIndex === 0}
+            onClick={handlePrevious}
+            className="flex-1 py-3 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs hover:bg-stone-200 disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5"
           >
-            <div className="flex items-center gap-2 font-bold">
-              {isCorrect ? (
-                <>
-                  <CheckCircle2 className="w-5 h-5 text-kai-green" />
-                  <span>Correct! 正解です</span>
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-5 h-5 text-kai-vermilion" />
-                  <span>Spelling: {currentWord.kana}</span>
-                </>
-              )}
-            </div>
-            <div className="text-xs text-stone-700 dark:text-stone-300 space-y-0.5">
-              <p>
-                <strong>Meaning:</strong> {currentWord.meaningEn}
-                {currentWord.meaningTe && (
-                  <span className="ml-2 font-telugu text-stone-500">
-                    ({currentWord.meaningTe})
-                    {!currentWord.teluguVerified && (
-                      <span className="ml-1 text-[10px] text-amber-600 font-sans">[unverified]</span>
-                    )}
-                  </span>
-                )}
-              </p>
-              {currentWord.kanji && (
-                <p>
-                  <strong>Kanji:</strong> <span className="font-serif_jp text-sm">{currentWord.kanji}</span>
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+            <ArrowLeft className="w-4 h-4" />
+            <span>Previous</span>
+          </button>
 
-        {/* Submit or Next Button */}
-        <div>
-          {!isAnswered ? (
-            <button
-              type="button"
-              disabled={userInput.length === 0}
-              onClick={handleSubmit}
-              className="w-full py-3.5 rounded-2xl bg-kai-vermilion text-white font-bold font-serif_jp shadow-vermilion hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-40"
-            >
-              Submit Answer (回答する)
-            </button>
-          ) : (
+          {!isLastQuestion ? (
             <button
               type="button"
               onClick={handleNext}
-              className="w-full py-3.5 rounded-2xl bg-kai-indigo text-white font-bold font-serif_jp shadow-md hover:bg-kai-indigo-light active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-2xl bg-kai-indigo text-white font-bold text-xs hover:bg-kai-indigo-light transition-colors flex items-center justify-center gap-1.5 shadow-sm"
             >
               <span>Next Word</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleFinalSubmit}
+              className="flex-1 py-3 rounded-2xl bg-kai-vermilion text-white font-bold text-xs shadow-vermilion hover:brightness-105 transition-all flex items-center justify-center gap-1.5"
+            >
+              <Send className="w-4 h-4" />
+              <span>Submit Session ({answeredCount}/{words.length})</span>
+            </button>
           )}
         </div>
+
+        {/* Jump-to-Submit shortcut if user wants to submit early */}
+        {!isLastQuestion && answeredCount > 0 && (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleFinalSubmit}
+              className="text-xs text-stone-500 hover:text-kai-vermilion underline font-mono"
+            >
+              Submit All Answers Now ({answeredCount} answered)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Interactive Keyboard */}
@@ -253,7 +300,6 @@ export const DictationScreenMode: React.FC<DictationScreenModeProps> = ({
         onInsertKana={handleInsertKana}
         onBackspace={handleBackspace}
         onClear={handleClear}
-        disabled={isAnswered}
       />
     </div>
   );

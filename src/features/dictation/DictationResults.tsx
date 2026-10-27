@@ -8,6 +8,7 @@ import { splitKanaUnits } from './eligibility';
 import { useLearning } from '../../context/LearningContext';
 import { dictationAudio } from './audioEngine';
 import { HankoStamp } from '../../components/fx/HankoStamp';
+import { UnverifiedBadge } from '../../components/common/UnverifiedBadge';
 
 interface DictationResultsProps {
   records: DictationAnswerRecord[];
@@ -88,7 +89,7 @@ export const DictationResults: React.FC<DictationResultsProps> = ({
                 key={idx}
                 className="flex items-center justify-between p-2.5 rounded-xl bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 text-xs"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => dictationAudio.play(r.item.kana)}
@@ -99,7 +100,11 @@ export const DictationResults: React.FC<DictationResultsProps> = ({
                   <span className="font-serif_jp font-bold text-sm text-[#14110F] dark:text-[#FAF5ED]">
                     {r.item.kana}
                   </span>
-                  <span className="text-stone-500">({r.item.meaningEn})</span>
+                  <span className="text-stone-500">
+                    ({r.item.meaningEn}
+                    {r.item.meaningTe && <span className="font-telugu ml-1">/ {r.item.meaningTe}</span>})
+                  </span>
+                  <UnverifiedBadge isVerified={r.item.teluguVerified} />
                 </div>
                 <div>
                   {r.isCorrect ? (

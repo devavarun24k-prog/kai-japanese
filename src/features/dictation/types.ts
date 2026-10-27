@@ -10,6 +10,8 @@ export type DictationAudioState = 'idle' | 'loading' | 'playing' | 'paused' | 'e
 export interface DictationConfig {
   mode: DictationMode;
   questionCount: number;
+  showLengthHint: boolean;
+  strictMode: boolean;
 }
 
 export interface DictationAnswerRecord {
